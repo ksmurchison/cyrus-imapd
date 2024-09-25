@@ -1411,8 +1411,16 @@ static int parse_request_line(struct transaction_t *txn)
         txn->error.desc = buf_cstring(&txn->buf);
     }
     else if (!(req_line->ver = tok_next(&tok))) {
-        ret = HTTP_BAD_REQUEST;
-        txn->error.desc = "Missing HTTP-version in request-line";
+        prot_NONBLOCK(httpd_in);
+        if (!strcmp(req_line->meth, "GET") && prot_peek(httpd_in) == EOF) {
+            /* HTTP/0.9 connection */
+            txn->flags.ver = VER_0_9;
+        }
+        else {
+            ret = HTTP_BAD_REQUEST;
+            txn->error.desc = "Missing HTTP-version in request-line";
+        }
+        prot_BLOCK(httpd_in);
     }
     else if (tok_next(&tok)) {
         ret = HTTP_BAD_REQUEST;
@@ -1546,6 +1554,7 @@ static int preauth_check_hdrs(struct transaction_t *txn)
             /* Fall through and create an :authority pseudo header */
             GCC_FALLTHROUGH
 
+        case VER_0_9:
         case VER_1_0:
             /* HTTP/1.0 - create an :authority pseudo header from URI */
             if (txn->req_uri->server) {
@@ -2101,11 +2110,18 @@ static int http1_input(struct transaction_t *txn)
     syslog(LOG_DEBUG, "parse request-line");
     ret = parse_request_line(txn);
 
-    /* Parse headers */
     if (!ret) {
-        syslog(LOG_DEBUG, "read headers");
-        ret = http_read_headers(httpd_in, 1 /* read_sep */,
-                                &txn->req_hdrs, &txn->error.desc);
+        if (txn->flags.ver == VER_0_9) {
+            /* Create empty header cache */
+            if (txn->req_hdrs) spool_free_hdrcache(txn->req_hdrs);
+            txn->req_hdrs = spool_new_hdrcache();
+        }
+        else {
+            /* Parse headers */
+            syslog(LOG_DEBUG, "read headers");
+            ret = http_read_headers(httpd_in, 1 /* read_sep */,
+                                    &txn->req_hdrs, &txn->error.desc);
+        }
     }
 
     if (ret) {
@@ -2421,7 +2437,7 @@ static int parse_connection(struct transaction_t *txn)
     const char **conn = spool_getheader(txn->req_hdrs, "Connection");
     int i;
 
-    if (!httpd_timeout || txn->flags.ver == VER_1_0) {
+    if (!httpd_timeout || txn->flags.ver < VER_1_1) {
         /* Non-persistent connection by default */
         txn->flags.conn |= CONN_CLOSE;
     }
@@ -2594,10 +2610,19 @@ EXPORTED const char *http_statusline(unsigned ver, long code)
 {
     static struct buf statline = BUF_INITIALIZER;
 
-    if (ver == VER_2) buf_setcstr(&statline, HTTP2_VERSION);
-    else {
-        buf_setmap(&statline, HTTP_VERSION, HTTP_VERSION_LEN-1);
-        buf_putc(&statline, ver + '0');
+    switch (ver) {
+    case VER_2:
+        buf_setcstr(&statline, HTTP2_VERSION);
+        break;
+    case VER_0_9:
+        buf_setcstr(&statline, "HTTP/0.9");
+        break;
+    case VER_1_0:
+        buf_setcstr(&statline, "HTTP/1.0");
+        break;
+    default:
+        buf_setcstr(&statline, HTTP_VERSION);
+        break;
     }
 
     buf_putc(&statline, ' ');
@@ -3680,13 +3705,16 @@ EXPORTED void write_body(long code, struct transaction_t *txn,
                 txn->resp_body.md5 = md5;
             }
         }
-        else if (txn->flags.ver == VER_1_0) {
+        else if (txn->flags.ver < VER_1_1) {
             /* HTTP/1.0 doesn't support chunked - close-delimit the body */
             txn->flags.conn = CONN_CLOSE;
         }
         else if (do_md5) txn->flags.trailer |= TRAILER_CMD5;
 
-        response_header(code, txn);
+        if (txn->flags.ver > VER_0_9) {
+            /* HTTP/0.9 doesn't use headers */
+            response_header(code, txn);
+        }
 
         /* MUST NOT send a body for 1xx/204/304 response or any HEAD response */
         switch (code) {
