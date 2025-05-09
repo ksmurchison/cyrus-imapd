@@ -2988,7 +2988,7 @@ static int twom_txn_dump(struct twom_txn *txn, int detail)
             const char *key = KEYPTR(loc->file->base + parent_offset);
             size_t len = KEYLEN(loc->file->base + parent_offset);
             if (len > 79) len = 79;
-            if (key) strncpy(scratch, key, len);
+            if (key) memcpy(scratch, key, len);
             scratch[len] = 0;
             for (i = 0; i < len; i++)
                 if (!scratch[i]) scratch[i] = '-';
@@ -2999,7 +2999,7 @@ static int twom_txn_dump(struct twom_txn *txn, int detail)
             const char *key = KEYPTR(ptr);
             size_t len = KEYLEN(ptr);
             if (len > 79) len = 79;
-            if (key) strncpy(scratch, key, len);
+            if (key) memcpy(scratch, key, len);
             scratch[len] = 0;
             for (i = 0; i < len; i++)
                 if (!scratch[i]) scratch[i] = '-';
@@ -3022,7 +3022,7 @@ static int twom_txn_dump(struct twom_txn *txn, int detail)
                 const char *val = VALPTR(ptr);
                 size_t len = VALLEN(ptr);
                 if (len > 79) len = 79;
-                if (val) strncpy(scratch, val, len);
+                if (val) memcpy(scratch, val, len);
                 scratch[len] = 0;
                 printf("\tv=(%s)\n", scratch);
             }

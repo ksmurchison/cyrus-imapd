@@ -105,6 +105,7 @@ static int _email_threadkeyword_is_valid(const char *keyword)
 #include "index.h"
 #include "search_query.h"
 #include "times.h"
+#include <stdbool.h>
 
 HIDDEN void jmap_email_contactfilter_init(const char *accountid,
                                           const struct auth_state *authstate,
