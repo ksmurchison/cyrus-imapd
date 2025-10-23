@@ -116,16 +116,12 @@ static int _email_threadkeyword_is_valid(const char *keyword)
 HIDDEN void jmap_email_contactfilter_init(const char *accountid,
                                           const struct auth_state *authstate,
                                           const struct namespace *namespace,
-                                          const char *addressbookid,
                                           struct email_contactfilter *cfilter)
 {
     memset(cfilter, 0, sizeof(struct email_contactfilter));
     cfilter->accountid = accountid;
     cfilter->authstate = authstate;
     cfilter->namespace = namespace;
-    if (addressbookid) {
-        cfilter->addrbook = carddav_mboxname(accountid, addressbookid);
-    }
 }
 
 HIDDEN void jmap_email_contactfilter_fini(struct email_contactfilter *cfilter)
@@ -133,7 +129,6 @@ HIDDEN void jmap_email_contactfilter_fini(struct email_contactfilter *cfilter)
     if (cfilter->carddavdb) {
         carddav_close(cfilter->carddavdb);
     }
-    free(cfilter->addrbook);
     free_hash_table(&cfilter->contactgroups, (void(*)(void*))strarray_free);
 }
 
@@ -251,16 +246,11 @@ HIDDEN int jmap_email_contactfilter_from_filtercondition(struct jmap_parser *par
         if (hash_lookup(groupid, &cfilter->contactgroups)) continue;
 
         /* Lookup group member email addresses */
-        mbentry_t *mbentry = NULL;
         strarray_t *members = NULL;
-        if (!cfilter->addrbook ||
-            !mboxlist_lookup(cfilter->addrbook, &mbentry, NULL)) {
-            members = carddav_getemails(cfilter->carddavdb, mbentry, groupid,
-                                        (c->type == CF_GROUP) ?
-                                        CARDDAV_KIND_GROUP : CARDDAV_KIND_ANY,
-                                        othermb);
-        }
-        mboxlist_entry_free(&mbentry);
+        members = carddav_getemails(cfilter->carddavdb, NULL, groupid,
+                                    (c->type == CF_GROUP) ?
+                                    CARDDAV_KIND_GROUP : CARDDAV_KIND_ANY,
+                                    othermb);
         if (!members) {
             jmap_parser_invalid(parser, c->field);
         }
@@ -1715,7 +1705,7 @@ HIDDEN int jmap_email_matchmime(matchmime_t *matchmime,
     jmap_email_filter_parse(jfilter, &parse_ctx);
 
     /* Gather contactgroup ids */
-    jmap_email_contactfilter_init(accountid, authstate, namespace, NULL, &cfilter);
+    jmap_email_contactfilter_init(accountid, authstate, namespace, &cfilter);
     ptrarray_t work = PTRARRAY_INITIALIZER;
     ptrarray_push(&work, jfilter);
     json_t *jf;
