@@ -66,7 +66,6 @@ struct email_contactfilter {
     const char *accountid;
     const struct auth_state *authstate;
     const struct namespace *namespace;
-    struct carddav_db *carddavdb;
     hash_table contactgroups; /* maps groupid to emails (strarray) */
 };
 
