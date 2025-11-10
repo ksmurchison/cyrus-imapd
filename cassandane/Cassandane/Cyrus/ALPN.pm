@@ -75,7 +75,6 @@ sub new
     }, @_);
 
     $self->needs('dependency', 'openssl');
-    $self->needs('dependency', 'openssl_alpn');
 
     return $self;
 }
