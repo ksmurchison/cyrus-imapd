@@ -174,6 +174,11 @@ static json_t *buildinfo()
     /* Build dependencies */
     json_object_set_new(dependency, "openssl", json_true());
     json_object_set_new(dependency, "openssl_alpn", json_true());
+#ifdef HAVE_QUIC
+    json_object_set_new(dependency, "openssl_quic", json_true());
+#else
+    json_object_set_new(dependency, "openssl_quic", json_false());
+#endif
 #ifdef HAVE_LDAP
     json_object_set_new(dependency, "ldap", json_true());
 #else
@@ -208,6 +213,11 @@ static json_t *buildinfo()
     json_object_set_new(dependency, "openio", json_true());
 #else
     json_object_set_new(dependency, "openio", json_false());
+#endif
+#ifdef HAVE_NGHTTP3
+    json_object_set_new(dependency, "nghttp3", json_true());
+#else
+    json_object_set_new(dependency, "nghttp3", json_false());
 #endif
 #ifdef HAVE_NGHTTP2
     json_object_set_new(dependency, "nghttp2", json_true());

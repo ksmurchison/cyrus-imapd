@@ -311,7 +311,7 @@ struct resp_body_t {
 
 /* Transaction flags */
 struct txn_flags_t {
-    unsigned long ver      : 2;         /* HTTP version of request */
+    unsigned long ver      : 3;         /* HTTP version of request */
     unsigned long conn     : 3;         /* Connection opts on req/resp */
     unsigned long upgrade  : 3;         /* Upgrade protocols */
     unsigned long override : 1;         /* HTTP method override */
@@ -423,6 +423,7 @@ enum {
     VER_1_0 =           1,
     VER_1_1 =           2,
     VER_2 =             3,
+    VER_3 =             4,
 };
 
 /* Connection token flags */

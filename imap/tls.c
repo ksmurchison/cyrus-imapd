@@ -114,6 +114,7 @@
 #include <openssl/pem.h>
 #include <openssl/x509.h>
 #include <openssl/ssl.h>
+#include <openssl/quic.h>
 
 /* Application-specific. */
 #include "assert.h"
@@ -708,7 +709,7 @@ done:
 // I am the server
 EXPORTED int     tls_init_serverengine(const char *ident,
                               int verifydepth,
-                              int askcert,
+                              unsigned flags,
                               SSL_CTX **ret)
 {
     int     off = 0;
@@ -723,6 +724,8 @@ EXPORTED int     tls_init_serverengine(const char *ident,
     enum enum_value tls_client_certs;
     int server_cipher_order;
     int timeout;
+    unsigned askcert = flags & TLS_SERVER_ASKCERT;
+    unsigned quic    = flags & TLS_SERVER_QUIC;
 
     if (ret) *ret = s_ctx;
 
@@ -747,7 +750,7 @@ EXPORTED int     tls_init_serverengine(const char *ident,
         return -1;
     }
 
-    s_ctx = SSL_CTX_new(TLS_server_method());
+    s_ctx = SSL_CTX_new(quic ? OSSL_QUIC_server_method() : TLS_server_method());
 
     if (s_ctx == NULL) {
         return (-1);
@@ -1097,7 +1100,8 @@ EXPORTED int tls_start_servertls(int readfd, int writefd, int timeout,
     else
         SSL_CTX_set_alpn_select_cb(s_ctx, NULL, NULL);
 
-    tls_conn = (SSL *) SSL_new(s_ctx);
+    //    tls_conn = (SSL *) SSL_new(s_ctx);
+    tls_conn = (SSL *) SSL_new_listener(s_ctx, 0);
     if (tls_conn == NULL) {
         *ret = NULL;
         r = -1;
@@ -1116,7 +1120,8 @@ EXPORTED int tls_start_servertls(int readfd, int writefd, int timeout,
      * This is the actual handshake routine. It will do all the negotiations
      * and will check the client cert etc.
      */
-    SSL_set_accept_state(tls_conn);
+    //    SSL_set_accept_state(tls_conn);
+    SSL_listen(tls_conn);
 
     /*
      * We do have an SSL_set_fd() and now suddenly a BIO_ routine is called?

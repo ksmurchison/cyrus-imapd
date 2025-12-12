@@ -68,6 +68,7 @@
 #include <jansson.h>
 
 #include "httpd.h"
+#include "http_h3.h"
 #include "http_h2.h"
 #include "http_jwt.h"
 #include "http_proxy.h"
@@ -430,6 +431,7 @@ char *httpd_altsvc = NULL;
 static struct http_connection http_conn;
 
 static sasl_ssf_t extprops_ssf = 0;
+int http3 = 0;
 int https = 0;
 static int httpd_tls_required = 0;
 static int httpd_starttls_enabled = 0;
@@ -483,7 +485,7 @@ ptrarray_t backend_cached = PTRARRAY_INITIALIZER;
 
 /* end PROXY stuff */
 
-static int tls_init(int client_auth, struct buf *serverinfo);
+static int tls_init(int http3, int https, struct buf *serverinfo);
 static void starttls(struct http_connection *conn, int timeout);
 void usage(void) __attribute__((noreturn));
 void shut_down(int code) __attribute__((noreturn));
@@ -827,11 +829,17 @@ int service_init(int argc __attribute__((unused)),
 
     mboxevent_setnamespace(&httpd_namespace);
 
-    while ((opt = getopt(argc, argv, "Hsp:q")) != EOF) {
+    while ((opt = getopt(argc, argv, "H3sp:q")) != EOF) {
         switch(opt) {
         case 'H': /* expect HAProxy protocol header */
             haproxy_protocol = 1;
             break;
+
+#if defined(HAVE_NGHTTP3) && defined(HAVE_QUIC)
+        case '3': /* HTTP/3 */
+            http3 = 1;
+            break;
+#endif
 
         case 's': /* https (do TLS right away) */
             https = 1;
@@ -866,7 +874,10 @@ int service_init(int argc __attribute__((unused)),
                SASL_VERSION_MAJOR, SASL_VERSION_MINOR, SASL_VERSION_STEP,
                LIBXML_DOTTED_VERSION, JANSSON_VERSION);
 
-    r = tls_init(!https, &serverinfo);
+    r = tls_init(http3, https, &serverinfo);
+    if (http3) {
+        if (!r) r = http3_init(&http_conn, &serverinfo);
+    }
     if (r && https) {
         switch (r) {
         case HTTP_NOT_IMPLEMENTED:
@@ -1046,7 +1057,7 @@ int service_main(int argc __attribute__((unused)),
     /* we were connected on https port so we should do
        TLS negotiation immediately */
     int do_h2 = 0;
-    if (https == 1) {
+    if (http3 || https) {
         starttls(&http_conn, 180 /* timeout */);
 
         /* Check negotiated protocol */
@@ -1257,6 +1268,7 @@ static unsigned h2_is_available(void *rock __attribute__((unused)))
 }
 
 static const struct tls_alpn_t http_alpn_map[] = {
+    { "h3",       NULL,             NULL },
     { "h2",       &h2_is_available, NULL },
     { "http/1.1", NULL,             NULL },
     { "http/1.0", NULL,             NULL },
@@ -1277,14 +1289,21 @@ static void _shutdown_tls(struct http_connection *conn __attribute__((unused)))
     tls_shutdown_serverengine();
 }
 
-static int tls_init(int client_auth, struct buf *serverinfo)
+static int tls_init(int http3, int https, struct buf *serverinfo)
 {
     buf_printf(serverinfo, " OpenSSL/%s", OPENSSL_FULL_VERSION_STR);
 
     if (!tls_enabled()) return HTTP_UNAVAILABLE;
 
     SSL_CTX *ctx = NULL;
-    if (tls_init_serverengine("http", 5 /* depth */, client_auth, &ctx) == -1) {
+    unsigned flags = 0;
+
+    if (http3)
+        flags |= TLS_SERVER_QUIC | TLS_SERVER_ASKCERT;
+    else if (!https)
+        flags |= TLS_SERVER_ASKCERT;
+
+    if (tls_init_serverengine("http", 5 /* depth */, flags, &ctx) == -1) {
         syslog(LOG_ERR, "error initializing TLS");
         return HTTP_SERVER_ERROR;
     }

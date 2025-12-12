@@ -68,9 +68,11 @@ struct tls_alpn_t {
 #include "global.h" /* for saslprops_t */
 
 /* init tls */
+#define TLS_SERVER_ASKCERT (1<<0)
+#define TLS_SERVER_QUIC    (1<<1)
 int tls_init_serverengine(const char *ident,
                           int verifydepth, /* depth to verify */
-                          int askcert,     /* 1 = client auth */
+                          unsigned flags,
                           SSL_CTX **ret);
 
 int tls_init_clientengine(int verifydepth,

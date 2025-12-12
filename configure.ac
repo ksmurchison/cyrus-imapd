@@ -1283,11 +1283,20 @@ SASL_SET_GSSAPI_LIBS
 dnl
 dnl Check for OpenSSL library, needed for TLS support
 dnl
-PKG_CHECK_MODULES([SSL], [openssl >= 3.0], [],
+PKG_CHECK_MODULES([SSL], [openssl >= 3.0], [with_ssl=yes],
                   AC_MSG_ERROR([openssl is required]))
 dnl call AC_SUBST macro to support pkg-config version older than 0.24
 AC_SUBST([SSL_LIBS])
 AC_SUBST([SSL_CFLAGS])
+
+dnl Check whether OpenSSL supports OSSL_QUIC_server_method
+AC_CHECK_LIB(ssl, OSSL_QUIC_server_method,
+    [AC_DEFINE(HAVE_QUIC_SERVER, [],
+        [Do we have support for QUIC?])
+        AC_DEFINE(HAVE_QUIC,[],[Can build with QUIC support])
+        with_quic=yes
+    ],
+    with_quic=no)
 
 dnl
 dnl Allow for setting EGD socket file on systems without /dev/*random.
@@ -1623,6 +1632,22 @@ dnl                                [Build DKIM support into iSchedule?]),
 dnl                        AC_MSG_WARN([Your version of OpenDKIM can not support iSchedule.  Consider patching OpenDKIM with contrib/dkim_canon_ischedule.patch])),
 dnl                AC_MSG_WARN([Your version of OpenDKIM can not support iSchedule.  Consider upgrading to OpenDKIM >= 2.7.0]))
 
+        AC_ARG_WITH(nghttp3, [AS_HELP_STRING([--without-nghttp3], [disable HTTP/3 support (check)])],,[with_nghttp3="check"])
+        if test "x$with_nghttp3" = "xyes" -o "x$with_nghttp3" = "xcheck"; then
+                PKG_CHECK_MODULES([NGHTTP3], [libnghttp3 >= 1.0.0], [
+                        AC_DEFINE(HAVE_NGHTTP3,[],
+                                [Build HTTP/3 support into httpd?])
+                        with_nghttp3=yes
+                ], [
+                        if test "x$with_nghttp3" = "xyes"; then
+                                AC_MSG_ERROR([HTTP/3 explicitly requested, but libnghttp3 was not found])
+                        fi
+                        AC_MSG_NOTICE([httpd will not have support for HTTP/3.  Consider installing libnghttp3 >= 1.0.0])
+                        with_nghttp3=no
+                ])
+        fi
+
+
         AC_ARG_WITH(nghttp2, [AS_HELP_STRING([--without-nghttp2], [disable HTTP/2 support (check)])],,[with_nghttp2="check"])
         if test "x$with_nghttp2" = "xyes" -o "x$with_nghttp2" = "xcheck"; then
                 PKG_CHECK_MODULES([NGHTTP2], [libnghttp2 >= 1.34.0], [
@@ -1703,9 +1728,10 @@ dnl                AC_MSG_WARN([Your version of OpenDKIM can not support iSchedu
                 ],
                 AC_MSG_NOTICE([tzdist will not have geolocation support.  Consider installing shapelib]))
 
-        HTTP_CPPFLAGS="${XML2_CFLAGS} ${SQLITE3_CFLAGS} ${ICAL_CFLAGS} ${GLIB_CFLAGS} ${JANSSON_CFLAGS} ${NGHTTP2_CFLAGS} ${WSLAY_CFLAGS} ${BROTLI_CFLAGS} ${ZSTD_CFLAGS} ${SHAPELIB_CFLAGS}"
-        HTTP_LIBS="${XML2_LIBS} ${SQLITE3_LIBS} ${ICAL_LIBS} ${GLIB_LIBS} ${JANSSON_LIBS} ${NGHTTP2_LIBS} ${WSLAY_LIBS} ${BROTLI_LIBS} ${ZSTD_LIBS} ${SHAPELIB_LIBS} ${LIBM}"
+        HTTP_CPPFLAGS="${XML2_CFLAGS} ${SQLITE3_CFLAGS} ${ICAL_CFLAGS} ${GLIB_CFLAGS} ${JANSSON_CFLAGS} ${NGHTTP3_CFLAGS} ${NGHTTP2_CFLAGS} ${WSLAY_CFLAGS} ${BROTLI_CFLAGS} ${ZSTD_CFLAGS} ${SHAPELIB_CFLAGS}"
+        HTTP_LIBS="${XML2_LIBS} ${SQLITE3_LIBS} ${ICAL_LIBS} ${GLIB_LIBS} ${JANSSON_LIBS} ${NGHTTP3_LIBS} ${NGHTTP2_LIBS} ${WSLAY_LIBS} ${BROTLI_LIBS} ${ZSTD_LIBS} ${SHAPELIB_LIBS} ${LIBM}"
 else
+        with_nghttp3="no (httpd is not built)"
         with_nghttp2="no (httpd is not built)"
         with_wslay="no (httpd is not built)"
         with_brotli="no (httpd is not built)"
@@ -2501,6 +2527,7 @@ Cyrus Server configured components
 External dependencies:
    ldap:               $have_ldap
    openssl:            $with_ssl
+       w/QUIC:         $with_quic
    zlib:               $with_zlib
    jansson:            $with_jansson
    pcre:               $cyrus_cv_pcre_utf8
@@ -2510,6 +2537,7 @@ External dependencies:
    caringo:            $with_caringo
    openio:             $with_openio
    -----------------------
+   nghttp3:            $with_nghttp3
    nghttp2:            $with_nghttp2
    wslay:              $with_wslay
    brotli:             $with_brotli
