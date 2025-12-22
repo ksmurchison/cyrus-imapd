@@ -7,14 +7,30 @@ sub test_cardgroup_changes
 {
     my $jmap = $self->{jmap};
 
-# Update to Card[Group]/[get|set] once implemented
     xlog $self, "create contacts";
-    my $res = $jmap->CallMethods([['ContactCard/set', {create => {
-                        "a" => {firstName => "a", lastName => "a"},
-                        "b" => {firstName => "b", lastName => "b"},
-                        "c" => {firstName => "c", lastName => "c"},
-                        "d" => {firstName => "d", lastName => "d"}
-                    }}, "R1"]]);
+    my $res = $jmap->CallMethods([
+        ['ContactCard/set', {
+            create => {
+                "a" => {
+                    '@type' => 'Card',
+                    version => '1.0',
+                    firstName => "a",
+                    lastName => "a"
+                },
+                "b" => {
+                    firstName => "b",
+                    lastName => "b"
+                },
+                "c" => {
+                    firstName => "c",
+                    lastName => "c"
+                },
+                "d" => {
+                    firstName => "d",
+                    lastName => "d"
+                }
+            }
+         }, "R1"]]);
     $self->assert_not_null($res);
     $self->assert_str_equals('ContactCard/set', $res->[0][0]);
     $self->assert_str_equals('R1', $res->[0][2]);
@@ -30,6 +46,8 @@ sub test_cardgroup_changes
     xlog $self, "create contact group 1";
     $res = $jmap->CallMethods([['ContactCard/set', {create => {
         "1" => {
+            '@type' => 'Card',
+            version => '1.0',
             kind => 'group',
             name => { full => "group1" },
             members => { $contactA => JSON::true, $contactB => JSON::true }
@@ -57,6 +75,8 @@ sub test_cardgroup_changes
     xlog $self, "create contact group 2";
     $res = $jmap->CallMethods([['ContactCard/set', {create => {
         "2" => {
+            '@type' => 'Card',
+            version => '1.0',
             kind => 'group',
             name => { full => "group2" },
             members =>  { $contactC => JSON::true, $contactD => JSON::true }
