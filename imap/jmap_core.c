@@ -86,130 +86,8 @@ static jmap_method_t jmap_core_methods_nonstandard[] = {
 };
 // clang-format on
 
-HIDDEN void jmap_core_init(jmap_settings_t *settings)
-{
-#define _read_int_opt(val, optkey) do { \
-    val = config_getint(optkey); \
-    if (val <= 0) { \
-        syslog(LOG_ERR, "jmap: invalid property value: %s", \
-                imapopts[optkey].optname); \
-        val = 0; \
-    } \
-} while (0)
-
-#define _read_bytesize_opt(val, optkey, defunit) do { \
-    val = config_getbytesize(optkey, defunit); \
-    if (val <= 0) { \
-        syslog(LOG_ERR, "jmap: invalid property value: %s", \
-               imapopts[optkey].optname); \
-        val = 0; \
-    } \
-} while (0)
-
-    int64_t *limits = settings->limits;
-
-    _read_bytesize_opt(limits[MAX_SIZE_UPLOAD],
-                       IMAPOPT_JMAP_MAX_SIZE_UPLOAD, 'K');
-    _read_int_opt(limits[MAX_CONCURRENT_UPLOAD],
-                  IMAPOPT_JMAP_MAX_CONCURRENT_UPLOAD);
-    _read_bytesize_opt(limits[MAX_SIZE_REQUEST],
-                       IMAPOPT_JMAP_MAX_SIZE_REQUEST, 'K');
-    _read_int_opt(limits[MAX_CONCURRENT_REQUESTS],
-                  IMAPOPT_JMAP_MAX_CONCURRENT_REQUESTS);
-    _read_int_opt(limits[MAX_CALLS_IN_REQUEST],
-                  IMAPOPT_JMAP_MAX_CALLS_IN_REQUEST);
-    _read_int_opt(limits[MAX_OBJECTS_IN_GET],
-                  IMAPOPT_JMAP_MAX_OBJECTS_IN_GET);
-    _read_int_opt(limits[MAX_OBJECTS_IN_SET],
-                  IMAPOPT_JMAP_MAX_OBJECTS_IN_SET);
-    _read_bytesize_opt(limits[MAX_SIZE_BLOB_SET],
-                       IMAPOPT_JMAP_MAX_SIZE_BLOB_SET, 'K');
-    _read_int_opt(limits[MAX_CATENATE_ITEMS],
-                  IMAPOPT_JMAP_MAX_CATENATE_ITEMS);
-
-#undef _read_int_opt
-#undef _read_bytesize_opt
-
-    limits[MAX_CREATEDIDS_IN_REQUEST] =
-        limits[MAX_CALLS_IN_REQUEST] * limits[MAX_OBJECTS_IN_SET];
-
-    json_object_set_new(settings->server_capabilities,
-            JMAP_URN_CORE,
-            json_pack("{s:i s:i s:i s:i s:i s:i s:i s:o}",
-                "maxSizeUpload",          limits[MAX_SIZE_UPLOAD],
-                "maxConcurrentUpload",    limits[MAX_CONCURRENT_UPLOAD],
-                "maxSizeRequest",         limits[MAX_SIZE_REQUEST],
-                "maxConcurrentRequests",  limits[MAX_CONCURRENT_REQUESTS],
-                "maxCallsInRequest",      limits[MAX_CALLS_IN_REQUEST],
-                "maxObjectsInGet",        limits[MAX_OBJECTS_IN_GET],
-                "maxObjectsInSet",        limits[MAX_OBJECTS_IN_SET],
-                "collationAlgorithms",    json_array()));
-
-    json_object_set_new(settings->server_capabilities,
-            JMAP_CORE_EXTENSION,
-            json_pack("{s:i}",
-                "maxCreatedIdsInRequest", limits[MAX_CREATEDIDS_IN_REQUEST]));
-
-    if (config_serverinfo == IMAP_ENUM_SERVERINFO_ON) {
-        struct utsname buf;
-
-        uname(&buf);
-        json_object_set_new(settings->server_capabilities,
-                            JMAP_URN_CORE_INFO,
-                            json_pack("{s:{s:s s:s} s:n s:{s:s s:s} s:n}",
-                                      "product",
-                                      "name", "Cyrus JMAP",
-                                      "version", CYRUS_VERSION,
-                                      "backend",
-                                      "environment",
-                                      "name", buf.sysname,
-                                      "version", buf.release,
-                                      "capabilitiesOverrides"));
-    }
-
-    jmap_add_methods(jmap_core_methods_standard, settings);
-
-    if (config_getswitch(IMAPOPT_JMAP_NONSTANDARD_EXTENSIONS)) {
-        json_object_set_new(settings->server_capabilities,
-                JMAP_PERFORMANCE_EXTENSION, json_object());
-        json_object_set_new(settings->server_capabilities,
-                JMAP_DEBUG_EXTENSION, json_object());
-        json_object_set_new(settings->server_capabilities,
-                JMAP_USERCOUNTERS_EXTENSION, json_object());
-
-        jmap_add_methods(jmap_core_methods_nonstandard, settings);
-    }
-
-}
-
-HIDDEN void jmap_core_capabilities(json_t *account_capabilities)
-{
-    json_object_set_new(account_capabilities,
-            JMAP_URN_CORE, json_object());
-
-    if (config_getswitch(IMAPOPT_JMAP_NONSTANDARD_EXTENSIONS)) {
-        json_object_set_new(account_capabilities,
-                JMAP_PERFORMANCE_EXTENSION, json_object());
-
-        json_object_set_new(account_capabilities,
-                JMAP_DEBUG_EXTENSION, json_object());
-
-        json_object_set_new(account_capabilities,
-                JMAP_USERCOUNTERS_EXTENSION, json_object());
-    }
-}
-
-/* Core/echo method */
-static int jmap_core_echo(jmap_req_t *req)
-{
-    json_array_append_new(req->response,
-                          json_pack("[s,O,s]", "Core/echo", req->args, req->tag));
-    return 0;
-}
-
-/* UserCounters/get method */
 // clang-format off
-static const jmap_property_t usercounters_props[] = {
+static const jmap_property_t _usercounters_props[] = {
     {
         "id",
         NULL,
@@ -360,6 +238,135 @@ static const jmap_property_t usercounters_props[] = {
 };
 // clang-format on
 
+#define NUM_USERCOUNTERS_PROPS \
+    (sizeof(_usercounters_props) / sizeof(jmap_property_t))
+
+static jmap_property_set_t usercounters_props = JMAP_PROPERTY_SET_INITIALIZER;
+
+HIDDEN void jmap_core_init(jmap_settings_t *settings)
+{
+#define _read_int_opt(val, optkey) do { \
+    val = config_getint(optkey); \
+    if (val <= 0) { \
+        syslog(LOG_ERR, "jmap: invalid property value: %s", \
+                imapopts[optkey].optname); \
+        val = 0; \
+    } \
+} while (0)
+
+#define _read_bytesize_opt(val, optkey, defunit) do { \
+    val = config_getbytesize(optkey, defunit); \
+    if (val <= 0) { \
+        syslog(LOG_ERR, "jmap: invalid property value: %s", \
+               imapopts[optkey].optname); \
+        val = 0; \
+    } \
+} while (0)
+
+    int64_t *limits = settings->limits;
+
+    _read_bytesize_opt(limits[MAX_SIZE_UPLOAD],
+                       IMAPOPT_JMAP_MAX_SIZE_UPLOAD, 'K');
+    _read_int_opt(limits[MAX_CONCURRENT_UPLOAD],
+                  IMAPOPT_JMAP_MAX_CONCURRENT_UPLOAD);
+    _read_bytesize_opt(limits[MAX_SIZE_REQUEST],
+                       IMAPOPT_JMAP_MAX_SIZE_REQUEST, 'K');
+    _read_int_opt(limits[MAX_CONCURRENT_REQUESTS],
+                  IMAPOPT_JMAP_MAX_CONCURRENT_REQUESTS);
+    _read_int_opt(limits[MAX_CALLS_IN_REQUEST],
+                  IMAPOPT_JMAP_MAX_CALLS_IN_REQUEST);
+    _read_int_opt(limits[MAX_OBJECTS_IN_GET],
+                  IMAPOPT_JMAP_MAX_OBJECTS_IN_GET);
+    _read_int_opt(limits[MAX_OBJECTS_IN_SET],
+                  IMAPOPT_JMAP_MAX_OBJECTS_IN_SET);
+    _read_bytesize_opt(limits[MAX_SIZE_BLOB_SET],
+                       IMAPOPT_JMAP_MAX_SIZE_BLOB_SET, 'K');
+    _read_int_opt(limits[MAX_CATENATE_ITEMS],
+                  IMAPOPT_JMAP_MAX_CATENATE_ITEMS);
+
+#undef _read_int_opt
+#undef _read_bytesize_opt
+
+    limits[MAX_CREATEDIDS_IN_REQUEST] =
+        limits[MAX_CALLS_IN_REQUEST] * limits[MAX_OBJECTS_IN_SET];
+
+    json_object_set_new(settings->server_capabilities,
+            JMAP_URN_CORE,
+            json_pack("{s:i s:i s:i s:i s:i s:i s:i s:o}",
+                "maxSizeUpload",          limits[MAX_SIZE_UPLOAD],
+                "maxConcurrentUpload",    limits[MAX_CONCURRENT_UPLOAD],
+                "maxSizeRequest",         limits[MAX_SIZE_REQUEST],
+                "maxConcurrentRequests",  limits[MAX_CONCURRENT_REQUESTS],
+                "maxCallsInRequest",      limits[MAX_CALLS_IN_REQUEST],
+                "maxObjectsInGet",        limits[MAX_OBJECTS_IN_GET],
+                "maxObjectsInSet",        limits[MAX_OBJECTS_IN_SET],
+                "collationAlgorithms",    json_array()));
+
+    json_object_set_new(settings->server_capabilities,
+            JMAP_CORE_EXTENSION,
+            json_pack("{s:i}",
+                "maxCreatedIdsInRequest", limits[MAX_CREATEDIDS_IN_REQUEST]));
+
+    if (config_serverinfo == IMAP_ENUM_SERVERINFO_ON) {
+        struct utsname buf;
+
+        uname(&buf);
+        json_object_set_new(settings->server_capabilities,
+                            JMAP_URN_CORE_INFO,
+                            json_pack("{s:{s:s s:s} s:n s:{s:s s:s} s:n}",
+                                      "product",
+                                      "name", "Cyrus JMAP",
+                                      "version", CYRUS_VERSION,
+                                      "backend",
+                                      "environment",
+                                      "name", buf.sysname,
+                                      "version", buf.release,
+                                      "capabilitiesOverrides"));
+    }
+
+    jmap_add_methods(jmap_core_methods_standard, settings);
+
+    if (config_getswitch(IMAPOPT_JMAP_NONSTANDARD_EXTENSIONS)) {
+        json_object_set_new(settings->server_capabilities,
+                JMAP_PERFORMANCE_EXTENSION, json_object());
+        json_object_set_new(settings->server_capabilities,
+                JMAP_DEBUG_EXTENSION, json_object());
+        json_object_set_new(settings->server_capabilities,
+                JMAP_USERCOUNTERS_EXTENSION, json_object());
+
+        jmap_add_methods(jmap_core_methods_nonstandard, settings);
+
+        jmap_build_prop_set(_usercounters_props, NUM_USERCOUNTERS_PROPS,
+                            &usercounters_props, settings);
+    }
+}
+
+HIDDEN void jmap_core_capabilities(json_t *account_capabilities)
+{
+    json_object_set_new(account_capabilities,
+            JMAP_URN_CORE, json_object());
+
+    if (config_getswitch(IMAPOPT_JMAP_NONSTANDARD_EXTENSIONS)) {
+        json_object_set_new(account_capabilities,
+                JMAP_PERFORMANCE_EXTENSION, json_object());
+
+        json_object_set_new(account_capabilities,
+                JMAP_DEBUG_EXTENSION, json_object());
+
+        json_object_set_new(account_capabilities,
+                JMAP_USERCOUNTERS_EXTENSION, json_object());
+    }
+}
+
+/* Core/echo method */
+static int jmap_core_echo(jmap_req_t *req)
+{
+    json_array_append_new(req->response,
+                          json_pack("[s,O,s]", "Core/echo", req->args, req->tag));
+    return 0;
+}
+
+/* UserCounters/get method */
 static void usercounters_get(jmap_req_t *req, struct jmap_get *get)
 {
     /* Read script */
@@ -466,7 +473,7 @@ static int jmap_usercounters_get(jmap_req_t *req)
     json_t *err = NULL;
 
     /* Parse request */
-    jmap_get_parse(req, &parser, usercounters_props, /*allow_null_ids*/1,
+    jmap_get_parse(req, &parser, &usercounters_props, /*allow_null_ids*/1,
                    NULL, NULL, &get, &err);
     if (err) {
         jmap_error(req, err);

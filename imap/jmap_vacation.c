@@ -97,57 +97,8 @@ static jmap_method_t jmap_vacation_methods_nonstandard[] = {
 };
 // clang-format on
 
-static int sieve_vacation_enabled = 0;
-
-HIDDEN void jmap_vacation_init(jmap_settings_t *settings)
-{
-    if (!config_getswitch(IMAPOPT_JMAP_VACATION)) return;
-
-    if (config_getswitch(IMAPOPT_SIEVEUSEHOMEDIR)) {
-        xsyslog(LOG_WARNING,
-                "can't use home directories -- disabling module", NULL);
-        return;
-    }
-
-    if (!sievedir_valid_path(config_getstring(IMAPOPT_SIEVEDIR))) {
-        xsyslog(LOG_WARNING,
-                "sievedir option is not defined or invalid -- disabling module",
-                NULL);
-        return;
-    }
-
-#ifdef USE_SIEVE
-    uint64_t config_ext = config_getbitfield(IMAPOPT_SIEVE_EXTENSIONS);
-    uint64_t required =
-        IMAP_ENUM_SIEVE_EXTENSIONS_VACATION   |
-        IMAP_ENUM_SIEVE_EXTENSIONS_RELATIONAL |
-        IMAP_ENUM_SIEVE_EXTENSIONS_DATE;
-
-    sieve_vacation_enabled = ((config_ext & required) == required);
-#endif /* USE_SIEVE */
-
-    if (!sieve_vacation_enabled) return;
-
-    jmap_add_methods(jmap_vacation_methods_standard, settings);
-
-    json_object_set_new(settings->server_capabilities,
-            JMAP_URN_VACATION, json_object());
-
-    if (config_getswitch(IMAPOPT_JMAP_NONSTANDARD_EXTENSIONS)) {
-        jmap_add_methods(jmap_vacation_methods_nonstandard, settings);
-    }
-}
-
-HIDDEN void jmap_vacation_capabilities(json_t *account_capabilities)
-{
-    if (!sieve_vacation_enabled) return;
-
-    json_object_set_new(account_capabilities, JMAP_URN_VACATION, json_object());
-}
-
-/* VacationResponse/get method */
 // clang-format off
-static const jmap_property_t vacation_props[] = {
+static const jmap_property_t _vacation_props[] = {
     {
         "id",
         NULL,
@@ -187,6 +138,63 @@ static const jmap_property_t vacation_props[] = {
     { NULL, NULL, 0 }
 };
 // clang-format on
+
+#define NUM_VACATION_PROPS (sizeof(_vacation_props) / sizeof(jmap_property_t))
+
+static jmap_property_set_t vacation_props = JMAP_PROPERTY_SET_INITIALIZER;
+
+static int sieve_vacation_enabled = 0;
+
+HIDDEN void jmap_vacation_init(jmap_settings_t *settings)
+{
+    if (!config_getswitch(IMAPOPT_JMAP_VACATION)) return;
+
+    if (config_getswitch(IMAPOPT_SIEVEUSEHOMEDIR)) {
+        xsyslog(LOG_WARNING,
+                "can't use home directories -- disabling module", NULL);
+        return;
+    }
+
+    if (!sievedir_valid_path(config_getstring(IMAPOPT_SIEVEDIR))) {
+        xsyslog(LOG_WARNING,
+                "sievedir option is not defined or invalid -- disabling module",
+                NULL);
+        return;
+    }
+
+#ifdef USE_SIEVE
+    uint64_t config_ext = config_getbitfield(IMAPOPT_SIEVE_EXTENSIONS);
+    uint64_t required =
+        IMAP_ENUM_SIEVE_EXTENSIONS_VACATION   |
+        IMAP_ENUM_SIEVE_EXTENSIONS_RELATIONAL |
+        IMAP_ENUM_SIEVE_EXTENSIONS_DATE;
+
+    sieve_vacation_enabled = ((config_ext & required) == required);
+#endif /* USE_SIEVE */
+
+    if (!sieve_vacation_enabled) return;
+
+    jmap_add_methods(jmap_vacation_methods_standard, settings);
+
+    jmap_build_prop_set(_vacation_props, NUM_VACATION_PROPS,
+                        &vacation_props, settings);
+
+    json_object_set_new(settings->server_capabilities,
+            JMAP_URN_VACATION, json_object());
+
+    if (config_getswitch(IMAPOPT_JMAP_NONSTANDARD_EXTENSIONS)) {
+        jmap_add_methods(jmap_vacation_methods_nonstandard, settings);
+    }
+}
+
+HIDDEN void jmap_vacation_capabilities(json_t *account_capabilities)
+{
+    if (!sieve_vacation_enabled) return;
+
+    json_object_set_new(account_capabilities, JMAP_URN_VACATION, json_object());
+}
+
+/* VacationResponse/get method */
 
 #define STATUS_ACTIVE    (1<<0)
 #define STATUS_CUSTOM    (1<<1)
@@ -316,7 +324,7 @@ static int jmap_vacation_get(jmap_req_t *req)
     int r = 0;
 
     /* Parse request */
-    jmap_get_parse(req, &parser, vacation_props, /*allow_null_ids*/1,
+    jmap_get_parse(req, &parser, &vacation_props, /*allow_null_ids*/1,
                    NULL, NULL, &get, &err);
     if (err) {
         jmap_error(req, err);
@@ -565,7 +573,7 @@ static int jmap_vacation_set(struct jmap_req *req)
     int r = 0;
 
     /* Parse arguments */
-    jmap_set_parse(req, &parser, vacation_props, NULL, NULL, &set, &jerr);
+    jmap_set_parse(req, &parser, &vacation_props, NULL, NULL, &set, &jerr);
     if (jerr) goto done;
 
     r = sieve_ensure_folder(req->accountid, &mailbox, /*silent*/0);

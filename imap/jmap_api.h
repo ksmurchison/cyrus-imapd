@@ -359,8 +359,25 @@ enum {
     JMAP_PROP_MANDATORY  = (1<<7), // MUST be present in Foo/set{create}
 };
 
+typedef struct jmap_property_set {
+    hash_table props;       // hash of name to const jmap_property_t*
+    strarray_t wildcards;   // list of wildcard property names, e.g. "foo*"
+    strarray_t always_get;  // list of JMAP_PROP_ALWAYS_GET names
+    strarray_t mandatory;   // list of JMAP_PROP_MANDATORY names
+    strarray_t external ;   // list of JMAP_PROP_EXTERNAL names
+} jmap_property_set_t;
+
+#define JMAP_PROPERTY_SET_INITIALIZER                                   \
+    { HASH_TABLE_INITIALIZER, STRARRAY_INITIALIZER,                     \
+      STRARRAY_INITIALIZER, STRARRAY_INITIALIZER, STRARRAY_INITIALIZER }
+
+extern void jmap_build_prop_set(const jmap_property_t props[],
+                                unsigned num_props,
+                                jmap_property_set_t *prop_set,
+                                jmap_settings_t *settings);
+
 extern const jmap_property_t *jmap_property_find(const char *name,
-                                                 const jmap_property_t props[]);
+                                                 jmap_property_set_t *prop_set);
 
 
 /* Foo/get */
@@ -383,7 +400,7 @@ typedef int jmap_args_parse_cb(jmap_req_t *, struct jmap_parser *,
                                const char *arg, json_t *val, void *);
 
 extern void jmap_get_parse(jmap_req_t *req, struct jmap_parser *parser,
-                           const jmap_property_t valid_props[],
+                           jmap_property_set_t *valid_props,
                            int allow_null_ids,
                            jmap_args_parse_cb args_parse, void *args_rock,
                            struct jmap_get *get,
@@ -417,7 +434,7 @@ struct jmap_set {
 #define JMAP_SET_INITIALIZER {0}
 
 extern void jmap_set_parse(jmap_req_t *req, struct jmap_parser *parser,
-                           const jmap_property_t valid_props[],
+                           jmap_property_set_t *valid_props,
                            jmap_args_parse_cb args_parse, void *args_rock,
                            struct jmap_set *set, json_t **err);
 extern void jmap_set_fini(struct jmap_set *set);
