@@ -1,0 +1,43 @@
+#!perl
+use Cassandane::Tiny;
+
+sub test_email_query_draft_seen
+    ($self)
+{
+    my $user = $self->default_user;
+    my $jmap = $user->jmap;
+
+    my $draft_mb = $user->mailboxes->create({
+        name => "drafts",
+        role => "drafts"
+    });
+
+    my $draft_em = $draft_mb->new_email;
+
+    xlog $self, "fetch emails without \$seen flag";
+    my $res = $jmap->request([[ 'Email/query' => {
+        filter => {
+            operator => "NOT",
+            conditions => [{ allInThreadHaveKeyword => '$seen' }],
+        }
+    }]]);
+    $self->assert_cmp_deeply(
+        superhashof({ ids => [ $draft_em->id ] }),
+        $res->single_sentence('Email/query')->arguments,
+    );
+
+    xlog $self, 'set \$draft flag on email';
+    $draft_em->keywords({ '$draft' => JSON::true });
+
+    xlog $self, "fetch emails without \$seen flag -- \$draft implies \$seen";
+    $res = $jmap->request([[ 'Email/query' => {
+        filter => {
+            operator => "NOT",
+            conditions => [{ allInThreadHaveKeyword => '$seen' }],
+        }
+    }]]);
+    $self->assert_cmp_deeply(
+        superhashof({ ids => [] }),
+        $res->single_sentence('Email/query')->arguments,
+    );
+}
