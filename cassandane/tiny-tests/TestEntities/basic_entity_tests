@@ -50,6 +50,22 @@ sub test_basic_entity_tests
         $email->from,
     );
 
+    # Default to comes from $user->username which is just 'cassandane'. Make
+    # sure it gets a proper domain or we end up without a to!
+    $self->assert_cmp_deeply(
+        [ superhashof({ email => 'cassandane@example.com' }) ],
+        $email->to,
+    );
+
+    # If we specify our own well formed to it should not get an extra
+    # '@example.com' at the end.
+    my $email2 = $inbox->new_email({ to => 'someone@local' });
+
+    $self->assert_cmp_deeply(
+        [ superhashof({ email => 'someone@local' }) ],
+        $email2->to,
+    );
+
     my $other = $self->{instance}->create_user('other');
     $inbox->share_with($other => [ 'mayRead' ]);
 
