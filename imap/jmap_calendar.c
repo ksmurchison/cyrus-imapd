@@ -1154,17 +1154,6 @@ static void setcalendar_parseprops(jmap_req_t *req,
         props->share.overwrite_acl = 1;
         props->transp = -1;
         props->comp_types = -1;
-
-        /* Any externally-stored properties? */
-        const jmap_property_t *prop;
-        int i;
-
-        ptrarray_foreach(&calendar_props.external, i, prop) {
-            if (json_object_get(arg, prop->name)) {
-                props->has_ext_props = true;
-                break;
-            }
-        }
     }
 
     /* name */
@@ -2013,6 +2002,7 @@ done:
 static void setcalendars_update(jmap_req_t *req,
                                 const char *uid,
                                 json_t *arg,
+                                bool has_ext_props,
                                 json_t **record,
                                 json_t **err)
 {
@@ -2030,6 +2020,7 @@ static void setcalendars_update(jmap_req_t *req,
     /* Parse and validate properties. */
     struct setcalendar_props props;
     setcalendar_parseprops(req, &parser, &props, arg, mboxname);
+    props.has_ext_props = has_ext_props;
     if (props.share.With) {
         if (!jmap_hasrights(req, mboxname, ACL_ADMIN)) {
             jmap_parser_invalid(&parser, "shareWith");
@@ -2181,8 +2172,13 @@ static int jmap_calendar_set(struct jmap_req *req)
             }
             calid = newcalid;
         }
+
+        /* Any externally-stored properties? */
+        bool has_ext_props =
+            json_is_true(json_object_get(set.update_external, id));
+
         json_t *record = NULL, *err = NULL;
-        setcalendars_update(req, calid, arg, &record, &err);
+        setcalendars_update(req, calid, arg, has_ext_props, &record, &err);
         if (!err) {
             json_object_set_new(set.updated, id, record);
         }

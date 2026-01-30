@@ -1727,19 +1727,6 @@ static void _mboxset_args_parse(json_t *jargs,
     args->overwrite_acl = 1;
     args->jargs = json_incref(jargs);
 
-    if (!is_create) {
-        /* Any externally-stored properties? */
-        const jmap_property_t *prop;
-        int i;
-
-        ptrarray_foreach(&mailbox_props.external, i, prop) {
-            if (json_object_get(jargs, prop->name)) {
-                args->has_ext_props = true;
-                break;
-            }
-        }
-    }
-
     /* id */
     json_t *jid = json_object_get(jargs, "id");
     if (json_is_string(jid) && !is_create) {
@@ -3977,6 +3964,11 @@ static void _mboxset_parse(jmap_req_t *req,
             free(args);
             continue;
         }
+
+        /* Any externally-stored properties? */
+        args->has_ext_props =
+            json_is_true(json_object_get(set->super.update_external, mbox_id));
+
         ptrarray_append(&set->update, args);
         jmap_parser_fini(&myparser);
     }
