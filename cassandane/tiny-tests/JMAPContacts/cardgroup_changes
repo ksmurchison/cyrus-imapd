@@ -14,26 +14,22 @@ sub test_cardgroup_changes
                 "a" => {
                     '@type' => 'Card',
                     version => '1.0',
-                    firstName => "a",
-                    lastName => "a"
+                    name => { full => 'John' }
                 },
                 "b" => {
                     '@type' => 'Card',
                     version => '1.0',
-                    firstName => "b",
-                    lastName => "b"
+                    name => { full => 'Jane' }
                 },
                 "c" => {
                     '@type' => 'Card',
                     version => '1.0',
-                    firstName => "c",
-                    lastName => "c"
+                    name => { full => 'Jack' }
                 },
                 "d" => {
                     '@type' => 'Card',
                     version => '1.0',
-                    firstName => "d",
-                    lastName => "d"
+                    name => { full => 'Jill' }
                 }
             }
          }, "R1"]]);
