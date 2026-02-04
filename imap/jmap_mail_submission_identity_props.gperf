@@ -50,11 +50,3 @@ jmap_property_t;
 "smtpRemoteService",   JMAP_MAIL_EXTENSION, 0
 "popLinkId",           JMAP_MAIL_EXTENSION, 0
 %%
-
-static const jmap_prop_hash_table_t jmap_identity_props_map = {
-    identity_prop_array,
-    IDENTITY_PROP_TOTAL_KEYWORDS,
-    IDENTITY_PROP_MIN_HASH_VALUE,
-    IDENTITY_PROP_MAX_HASH_VALUE,
-    &identity_prop_lookup
-};

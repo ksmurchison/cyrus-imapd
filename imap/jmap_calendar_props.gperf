@@ -49,11 +49,3 @@ jmap_property_t;
 "mailboxUniqueId",  JMAP_CALENDARS_EXTENSION, JMAP_PROP_SERVER_SET
 "x-href",           JMAP_DEBUG_EXTENSION,     JMAP_PROP_SERVER_SET
 %%
-
-static const jmap_prop_hash_table_t jmap_calendar_props_map = {
-    calendar_prop_array,
-    CALENDAR_PROP_TOTAL_KEYWORDS,
-    CALENDAR_PROP_MIN_HASH_VALUE,
-    CALENDAR_PROP_MAX_HASH_VALUE,
-    &calendar_prop_lookup
-};

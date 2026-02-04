@@ -71,11 +71,3 @@ jmap_property_t;
 # Allow vendor properties (prefix ':' name)
 "*:*", NULL, JMAP_PROP_SKIP_GET
 %%
-
-static const jmap_prop_hash_table_t jmap_card_props_map = {
-    card_prop_array,
-    CARD_PROP_TOTAL_KEYWORDS,
-    CARD_PROP_MIN_HASH_VALUE,
-    CARD_PROP_MAX_HASH_VALUE,
-    &card_prop_lookup
-};

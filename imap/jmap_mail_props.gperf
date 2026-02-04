@@ -66,11 +66,3 @@ jmap_property_t;
 "createdModseq",         JMAP_MAIL_EXTENSION, JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE
 "deliveredTo",           JMAP_MAIL_EXTENSION, JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE | JMAP_PROP_SKIP_GET
 %%
-
-static const jmap_prop_hash_table_t jmap_email_props_map = {
-    email_prop_array,
-    EMAIL_PROP_TOTAL_KEYWORDS,
-    EMAIL_PROP_MIN_HASH_VALUE,
-    EMAIL_PROP_MAX_HASH_VALUE,
-    &email_prop_lookup
-};

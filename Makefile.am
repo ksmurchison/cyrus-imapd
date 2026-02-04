@@ -1520,6 +1520,9 @@ imap_unexpunge_LDADD = $(LD_UTILITY_ADD)
 %_err.h %_err.c: %_err.et $(COMPILE_ET_DEP)
 	$(AM_V_GEN)(cd $(@D) && $(COMPILE_ET) $(realpath $<))
 
+%_props.h: %_props.gperf tools/gperf-post-process-props.pl
+	$(AM_V_GEN)gperf $< | $(top_srcdir)/tools/gperf-post-process-props.pl > $@.NEW && mv $@.NEW $@
+
 if HAVE_XXD
 # xxd cannot have path details in its input filename, otherwise it junks up
 # the variable names in the output file.  so do a tricky directory change.
@@ -1544,9 +1547,6 @@ lib/htmlchar.h: lib/htmlchar.st
 
 imap/mailbox_header_cache.h: imap/mailbox_header_cache.gperf
 	$(AM_V_GEN)gperf --ignore-case --initializer-suffix=,0 -p -j1 -i 1 -g -o -t -H mailbox_header_cache_hash -N mailbox_header_cache_lookup -k1,3,$$ $< > $@.NEW && mv $@.NEW $@
-
-%_props.h: %_props.gperf
-	$(AM_V_GEN)gperf $< > $@.NEW && mv $@.NEW $@
 endif
 
 imtest_imtest_SOURCES = imtest/imtest.c

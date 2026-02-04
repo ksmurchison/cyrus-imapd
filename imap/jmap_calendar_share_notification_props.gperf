@@ -34,11 +34,3 @@ jmap_property_t;
 "oldRights",       NULL, JMAP_PROP_SERVER_SET
 "newRights",       NULL, JMAP_PROP_SERVER_SET
 %%
-
-static const jmap_prop_hash_table_t jmap_sharenotification_props_map = {
-    sharenotification_prop_array,
-    SHARENOTIFICATION_PROP_TOTAL_KEYWORDS,
-    SHARENOTIFICATION_PROP_MIN_HASH_VALUE,
-    SHARENOTIFICATION_PROP_MAX_HASH_VALUE,
-    &sharenotification_prop_lookup
-};

@@ -28,11 +28,3 @@ jmap_property_t;
 "data", NULL, 0
 "type", NULL, 0
 %%
-
-static const jmap_prop_hash_table_t jmap_blob_upload_props_map = {
-    blob_upload_prop_array,
-    BLOB_UPLOAD_PROP_TOTAL_KEYWORDS,
-    BLOB_UPLOAD_PROP_MIN_HASH_VALUE,
-    BLOB_UPLOAD_PROP_MAX_HASH_VALUE,
-    &blob_upload_prop_lookup
-};

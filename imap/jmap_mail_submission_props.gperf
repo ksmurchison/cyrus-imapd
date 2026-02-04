@@ -40,11 +40,3 @@ jmap_property_t;
 "onSend",  JMAP_MAIL_EXTENSION, JMAP_PROP_IMMUTABLE
 "created", JMAP_MAIL_EXTENSION, JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE
 %%
-
-static const jmap_prop_hash_table_t jmap_submission_props_map = {
-    submission_prop_array,
-    SUBMISSION_PROP_TOTAL_KEYWORDS,
-    SUBMISSION_PROP_MIN_HASH_VALUE,
-    SUBMISSION_PROP_MAX_HASH_VALUE,
-    &submission_prop_lookup
-};

@@ -105,13 +105,9 @@ static jmap_method_t jmap_mailbox_methods_nonstandard[] = {
 };
 // clang-format on
 
-static jmap_property_set_t mailbox_props = JMAP_PROPERTY_SET_INITIALIZER;
-
 HIDDEN void jmap_mailbox_init(jmap_settings_t *settings)
 {
     jmap_add_methods(jmap_mailbox_methods_standard, settings);
-
-    jmap_build_prop_set(&jmap_mailbox_props_map, &mailbox_props, settings);
 
     if (config_getswitch(IMAPOPT_JMAP_NONSTANDARD_EXTENSIONS)) {
         jmap_add_methods(jmap_mailbox_methods_nonstandard, settings);

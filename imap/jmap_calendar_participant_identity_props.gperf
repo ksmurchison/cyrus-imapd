@@ -29,11 +29,3 @@ jmap_property_t;
 "name",   NULL, 0
 "sendTo", NULL, 0
 %%
-
-static const jmap_prop_hash_table_t jmap_participantidentity_props_map = {
-    participantidentity_prop_array,
-    PARTICIPANTIDENTITY_PROP_TOTAL_KEYWORDS,
-    PARTICIPANTIDENTITY_PROP_MIN_HASH_VALUE,
-    PARTICIPANTIDENTITY_PROP_MAX_HASH_VALUE,
-    &participantidentity_prop_lookup
-};

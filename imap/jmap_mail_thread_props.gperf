@@ -27,11 +27,3 @@ jmap_property_t;
 "id",       NULL, JMAP_PROP_IMMUTABLE | JMAP_PROP_ALWAYS_GET
 "emailIds", NULL, 0
 %%
-
-static const jmap_prop_hash_table_t jmap_thread_props_map = {
-    thread_prop_array,
-    THREAD_PROP_TOTAL_KEYWORDS,
-    THREAD_PROP_MIN_HASH_VALUE,
-    THREAD_PROP_MAX_HASH_VALUE,
-    &thread_prop_lookup
-};
