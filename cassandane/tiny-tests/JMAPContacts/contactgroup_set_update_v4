@@ -29,9 +29,9 @@ BEGIN:VCARD
 VERSION:4.0
 UID:$id
 KIND:group
-MEMBER:urn:uuid:$contact1
-MEMBER:urn:uuid:$contact2
-MEMBER:urn:uuid:$contact3
+MEMBER:$contact1
+MEMBER:$contact2
+MEMBER:$contact3
 FN:Test
 REV:20220217T152253Z
 N:Test
