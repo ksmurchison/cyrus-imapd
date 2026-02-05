@@ -1413,7 +1413,21 @@ static int carddav_put(struct transaction_t *txn, void *obj,
         goto done;
     }
 
-    if (!vcardcomponent_check_restrictions(vcard)) {
+    /* If we are missing N or FN, add an empty one */
+    vcardproperty *n =
+        vcardcomponent_get_first_property(vcard, VCARD_N_PROPERTY);
+    vcardproperty *fn =
+        vcardcomponent_get_first_property(vcard, VCARD_FN_PROPERTY);
+
+    if (!n) {
+        vcardstructuredtype st = { 5, { 0 } };  // 5 empty components
+        vcardcomponent_add_property(vcard, vcardproperty_new_n(&st));
+    }
+    else if (!fn) {
+        vcardcomponent_add_property(vcard, vcardproperty_new_fn(""));
+    }
+
+    if ((!n && !fn) || !vcardcomponent_check_restrictions(vcard)) {
         txn->error.precond = CARDDAV_VALID_DATA;
         txn->error.desc = "Failed restriction checks";
         goto done;
