@@ -751,6 +751,42 @@ static int carddav_copy(struct transaction_t *txn, void *obj,
     return carddav_store_resource(txn, vcard, mailbox, resource, db);
 }
 
+static void cyr_vcardcomponent_transform(vcardcomponent *vcard,
+                                         vcardproperty_version want_ver,
+                                         const char **ua)
+{
+    vcardcomponent_transform(vcard, want_ver);
+
+    if (want_ver == VCARD_VERSION_40 &&
+        ua && !strncmp(ua[0], DAVX5_UA_STR, DAVX5_UA_STR_LEN)) {
+        /* XXX quirk
+         *
+         * DAVx5 blindly prepends urn:uuid: to MEMBER UIDs which makes the
+         * referenced vCards unresolvable by other clients.
+         *
+         * So, when processing CardDAV GET/REPORT requests by DAVx5
+         * we restore the prefix to MEMBER properties (if not already present),
+         * since we removed it on ingest.
+         */
+        struct buf buf = BUF_INITIALIZER;
+        vcardproperty *prop;
+
+        for (prop = vcardcomponent_get_first_property(vcard, VCARD_MEMBER_PROPERTY);
+             prop;
+             prop = vcardcomponent_get_next_property(vcard, VCARD_MEMBER_PROPERTY)) {
+            const char *member = vcardproperty_get_member(prop);
+
+            if (strncmp(member, MEMBER_URI_PREFIX, MEMBER_URI_PREFIX_LEN)) {
+                buf_setcstr(&buf, MEMBER_URI_PREFIX);
+                buf_appendcstr(&buf, member);
+                vcardproperty_set_member(prop, buf_cstring(&buf));
+            }
+        }
+
+        buf_free(&buf);
+    }
+}
+
 static int export_addressbook(struct transaction_t *txn,
                               struct mime_type_t *mime)
 {
@@ -850,9 +886,11 @@ static int export_addressbook(struct transaction_t *txn,
                 (vcardcomponent_get_version(vcard) == VCARD_VERSION_40) ? 4 : 3;
 
             if (version != want_ver || want_ver == 4) {
-                vcardcomponent_transform(vcard,
-                                         want_ver == 4 ? VCARD_VERSION_40 :
-                                         VCARD_VERSION_30);
+                cyr_vcardcomponent_transform(vcard,
+                                             want_ver == 4 ? VCARD_VERSION_40 :
+                                             VCARD_VERSION_30,
+                                             spool_getheader(txn->req_hdrs,
+                                                             "User-Agent"));
             }
 
             if (r++ && *sep) {
@@ -1245,9 +1283,11 @@ static int carddav_get(struct transaction_t *txn, struct mailbox *mailbox,
         if (cdata->version != want_ver || want_ver == 4) {
             /* Translate between vCard versions */
             *obj = record_to_vcard_x(mailbox, record);
-            vcardcomponent_transform(*obj,
-                                     want_ver == 4 ? VCARD_VERSION_40 :
-                                     VCARD_VERSION_30);
+            cyr_vcardcomponent_transform(*obj,
+                                         want_ver == 4 ? VCARD_VERSION_40 :
+                                         VCARD_VERSION_30,
+                                         spool_getheader(txn->req_hdrs,
+                                                         "User-Agent"));
         }
 
         return HTTP_CONTINUE;
@@ -1299,6 +1339,7 @@ static int carddav_put(struct transaction_t *txn, void *obj,
     char *type = NULL, *subtype = NULL;
     struct param *params = NULL;
     const char *want_ver = NULL;
+    char *card_ver = NULL;
     int error_count = 0;
 
     /* Sanity check Content-Type */
@@ -1384,6 +1425,20 @@ static int carddav_put(struct transaction_t *txn, void *obj,
         vcardcomponent_strip_errors(vcard);
     }
 
+    /* XXX quirk
+     *
+     * DAVx5 blindly prepends urn:uuid: to MEMBER UIDs which makes the
+     * referenced vCards unresolvable by other clients.
+     *
+     * So, when processing CardDAV PUT requests by DAVx5
+     * we strip the prefix from MEMBER properties.
+     */
+    bool strip_member_prefix = false;
+    hdr = spool_getheader(txn->req_hdrs, "User-Agent");
+    if (hdr && !strncmp(hdr[0], DAVX5_UA_STR, DAVX5_UA_STR_LEN)) {
+        strip_member_prefix = true;
+    }
+
     /* Sanity check vCard data */
     vcardproperty *prop;
     for (prop = vcardcomponent_get_first_property(vcard, VCARD_ANY_PROPERTY);
@@ -1393,13 +1448,14 @@ static int carddav_put(struct transaction_t *txn, void *obj,
 
         switch (vcardproperty_isa(prop)) {
         case VCARD_VERSION_PROPERTY:
-            if (strcmp(propval, "3.0") &&
-                strcmp(propval, "4.0")) {
+            card_ver = xstrdup(propval);
+            if (strcmp(card_ver, "3.0") &&
+                strcmp(card_ver, "4.0")) {
                 txn->error.precond = CARDDAV_SUPP_DATA;
                 txn->error.desc = "Unsupported vCard version";
                 goto done;
             }
-            if (want_ver && (want_ver[0] != propval[0])) {
+            if (want_ver && (want_ver[0] != card_ver[0])) {
                 txn->error.precond = CARDDAV_VALID_DATA;
                 txn->error.desc =
                     "Content-Type version= and vCard VERSION mismatch";
@@ -1415,6 +1471,13 @@ static int carddav_put(struct transaction_t *txn, void *obj,
         case VCARD_FN_PROPERTY:
             if (!fullname)
                 fullname = xstrdup(propval);
+            break;
+
+        case VCARD_MEMBER_PROPERTY:
+            if (strip_member_prefix &&
+                !strncmp(propval, MEMBER_URI_PREFIX, MEMBER_URI_PREFIX_LEN)) {
+                vcardproperty_set_member(prop, propval + MEMBER_URI_PREFIX_LEN);
+            }
             break;
 
         default:
@@ -1433,7 +1496,30 @@ static int carddav_put(struct transaction_t *txn, void *obj,
         goto done;
     }
 
-    txn->error.precond = check_uid_conflict(txn, mailbox, resource, uid, db);
+    /* Check for changed UID */
+    struct carddav_data *cdata;
+    carddav_lookup_resource(db, txn->req_tgt.mbentry, resource, &cdata, 0);
+
+    const char *olduid = cdata->vcard_uid;
+    const char *newuid = uid;
+    if (cdata->dav.imap_uid && olduid && newuid
+        && cdata->version == 3 && !strcmpsafe(card_ver, "4.0")
+        && !strncasecmp(newuid, "urn:uuid:", 9)
+        && !strcmp(olduid, newuid + 9))
+    {
+        // XXX quirk
+        // This is a PUT that rewrites a version 3 vCard to version 4
+        // and prefixes the UID value of the former card with the
+        // verbatim string "urn:uuid". Strictly speaking, this is not
+        // allowed and would require us to reject this with a
+        // no-uid-conflict precondition error. But previous versions
+        // of Cyrus did allow to do so and there is at least one client
+        // (eMClient) that does these bogus rewrites, so let's allow
+        // this case until they got a chance to fix their code.
+    }
+    else {
+        txn->error.precond = check_uid_conflict(txn, mailbox, resource, uid, db);
+    }
 
   done:
     param_free(&params);
@@ -1441,6 +1527,7 @@ static int carddav_put(struct transaction_t *txn, void *obj,
     free(fullname);
     free(subtype);
     free(type);
+    free(card_ver);
 
     if (txn->error.precond) return HTTP_FORBIDDEN;
 
@@ -1724,9 +1811,11 @@ static int propfind_addrdata(const xmlChar *name, xmlNsPtr ns,
 
             if (!vcard) vcard = fctx->obj = vcard_parse_string_x(data);
 
-            vcardcomponent_transform(vcard,
-                                     want_ver == 4 ? VCARD_VERSION_40 :
-                                     VCARD_VERSION_30);
+            cyr_vcardcomponent_transform(vcard,
+                                         want_ver == 4 ? VCARD_VERSION_40 :
+                                         VCARD_VERSION_30,
+                                         spool_getheader(fctx->txn->req_hdrs,
+                                                         "User-Agent"));
         }
 
         if (strarray_size(partial)) {
