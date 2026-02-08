@@ -65,7 +65,7 @@ static void test_parsehex(void)
     CU_ASSERT_EQUAL(r, -1);
 }
 
-#define wrap_int_parser_nofree(prot, b, func, type, s, outp, valp, inp); do \
+#define wrap_int_parser_nofree(prot, b, func, type, s, outp, valp, inp) do  \
 {                                                                           \
     int *outp__ = (outp);                                                   \
     type *valp__ = (valp);                                                  \
