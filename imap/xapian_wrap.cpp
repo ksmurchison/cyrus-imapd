@@ -1411,6 +1411,11 @@ static int xapian_db_init(xapian_db_t *db, int is_inmemory)
     return r;
 }
 
+static bool xapian_db_has_version_lower_than(const xapian_db_t *db, unsigned v)
+{
+    return db->db_versions->lower_bound(v) != db->db_versions->begin();
+}
+
 EXPORTED int xapian_db_open(const char **paths, xapian_db_t **dbp)
 {
     xapian_db_t *db = (xapian_db_t *)xzmalloc(sizeof(xapian_db_t));
@@ -1649,7 +1654,7 @@ static Xapian::Query *query_new_listid(const xapian_db_t *db,
         q = new Xapian::Query(Xapian::Query::MatchNothing);
     }
 
-    if (db->db_versions->lower_bound(11) != db->db_versions->begin()) {
+    if (xapian_db_has_version_lower_than(db, 11)) {
         // query in legacy format
         db->parser->set_stemmer(Xapian::Stem());
         db->parser->set_stopper(NULL);
@@ -1758,7 +1763,7 @@ static Xapian::Query *query_new_email(const xapian_db_t *db,
 
     if (!addr) {
         Xapian::Query q = Xapian::Query::MatchNothing;
-        if (db->db_versions->lower_bound(12) != db->db_versions->begin()) {
+        if (xapian_db_has_version_lower_than(db, 12)) {
             // query in legacy format
             q |= db->parser->parse_query(searchstr, queryflags, prefix);
         }
@@ -1803,8 +1808,7 @@ static Xapian::Query *query_new_email(const xapian_db_t *db,
                     free(a);
                 }
 
-                if (db->db_versions->lower_bound(16) !=
-                        db->db_versions->begin()) {
+                if (xapian_db_has_version_lower_than(db, 16)) {
                     // Database version 15 did not index complete addresses
                     // with A prefix, but rather indexed localpart and domain
                     // separately, using L and D prefixes.
@@ -1883,7 +1887,7 @@ static Xapian::Query *query_new_email(const xapian_db_t *db,
                 queries.end());
     }
 
-    if (db->db_versions->lower_bound(12) != db->db_versions->begin()) {
+    if (xapian_db_has_version_lower_than(db, 12)) {
         // query in legacy format as well
         q |= db->parser->parse_query(searchstr, queryflags, prefix);
     }
@@ -1911,7 +1915,7 @@ static Xapian::Query *query_new_type(const xapian_db_t *db __attribute__((unused
     std::string prefix(get_term_prefix(partnum));
     Xapian::Query q = Xapian::Query::MatchNothing;
 
-    bool query_legacy = db->db_versions->lower_bound(13) != db->db_versions->begin();
+    bool query_legacy = xapian_db_has_version_lower_than(db, 13);
     struct buf buf = BUF_INITIALIZER;
     unsigned qpflags = Xapian::QueryParser::FLAG_PHRASE |
                        Xapian::QueryParser::FLAG_WILDCARD;
