@@ -125,6 +125,6 @@ sub download
     $self->{jmap}->Download($accountid, $blobid);
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/JMAPSieve';
+use Cassandane::Tiny::Loader;
 
 1;

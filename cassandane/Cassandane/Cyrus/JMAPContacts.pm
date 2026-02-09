@@ -139,6 +139,6 @@ sub dblookup ($self, $path, $headers) {
     };
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/JMAPContacts';
+use Cassandane::Tiny::Loader;
 
 1;

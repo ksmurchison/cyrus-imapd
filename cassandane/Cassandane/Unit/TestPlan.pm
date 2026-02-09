@@ -704,16 +704,13 @@ sub check_sanity
             return if not -f $fname;
             return if $fname !~ m/\.pm$/;
 
+            my ($moniker) = $fname =~ m{([^/]+)\.pm$};
+
             open my $fh, '<', $fname or die "open $fname: $!";
             while (<$fh>) {
-                if (m{^\s*use\s+Cassandane::Tiny::Loader\s*
-                      (['"])
-                      (.*?)
-                      \1
-                      \s*;\s*$
-                    }x)
+                if (m{^\s*use\s+Cassandane::Tiny::Loader;\s*$})
                 {
-                    push @{$used_tt_dirs{$2}}, $fname;
+                    push @{$used_tt_dirs{"tiny-tests/$moniker"}}, $fname;
                 }
             }
             close $fh;

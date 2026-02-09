@@ -90,6 +90,6 @@ sub set_up
     }
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/JMAPNote';
+use Cassandane::Tiny::Loader;
 
 1;
