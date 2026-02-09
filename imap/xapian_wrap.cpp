@@ -1562,10 +1562,10 @@ EXPORTED void xapian_query_add_stemmer(xapian_db_t *db, const char *iso_lang)
         db->stem_languages->insert(iso_lang);
 }
 
-static Xapian::Query* query_new_textmatch(const xapian_db_t *db,
-                                          enum search_part partnum,
-                                          const char *match,
-                                          Xapian::TermGenerator::stem_strategy tg_stem_strategy)
+static Xapian::Query* query_new_textmatch_internal(const xapian_db_t *db,
+                                                   enum search_part partnum,
+                                                   const char *match,
+                                                   Xapian::TermGenerator::stem_strategy tg_stem_strategy)
 {
     unsigned flags = Xapian::QueryParser::FLAG_PHRASE |
                      Xapian::QueryParser::FLAG_WILDCARD;
@@ -2180,6 +2180,45 @@ static Xapian::Query *xapian_query_new_numbermatch(enum search_part partnum,
     return new Xapian::Query(q);
 }
 
+static Xapian::Query* query_new_textmatch(const xapian_db_t *db,
+                                          enum search_part partnum,
+                                          const char *mystr)
+{
+    Xapian::Query *q = NULL;
+
+    if (isdigit(mystr[0])) {
+        // Try parsing the query string as a number.
+        q = xapian_query_new_numbermatch(partnum, mystr);
+        if (q) return q;
+        // Fall through handling it as arbitrary text.
+    }
+
+    // Match unstructured search parts
+    int need_word_break = 0;
+    for (const unsigned char *p = (const unsigned char *)mystr; *p; p++) {
+        // Use ICU word break for Thaana codepage (0780) or higher.
+        if (*p > 221) {
+            need_word_break = 1;
+            break;
+        }
+    }
+
+    if (need_word_break) {
+        q = xapian_query_new_match_word_break(db, partnum, mystr);
+    }
+    else {
+        Xapian::TermGenerator::stem_strategy stem_strategy =
+            get_stem_strategy(partnum);
+        q = query_new_textmatch_internal(db, partnum, mystr, stem_strategy);
+    }
+    if (q && q->get_type() == Xapian::Query::LEAF_MATCH_NOTHING) {
+        delete q;
+        q = NULL;
+    }
+
+    return q;
+}
+
 static Xapian::Query *xapian_query_new_match_internal(const xapian_db_t *db,
                                                       enum search_part partnum,
                                                       const char *str,
@@ -2223,35 +2262,7 @@ static Xapian::Query *xapian_query_new_match_internal(const xapian_db_t *db,
             q = query_new_messageid(db, partnum, mystr);
         }
         else {
-            if (isdigit(mystr[0])) {
-                // Try parsing the query string as a number.
-                q = xapian_query_new_numbermatch(partnum, mystr);
-                if (q) goto done;
-                // Fall through handling it as arbitrary text.
-            }
-
-            // Match unstructured search parts
-            int need_word_break = 0;
-            for (const unsigned char *p = (const unsigned char *)mystr; *p; p++) {
-                // Use ICU word break for Thaana codepage (0780) or higher.
-                if (*p > 221) {
-                    need_word_break = 1;
-                    break;
-                }
-            }
-
-            if (need_word_break) {
-                q = xapian_query_new_match_word_break(db, partnum, mystr);
-            }
-            else {
-                Xapian::TermGenerator::stem_strategy stem_strategy =
-                    get_stem_strategy(partnum);
-                q = query_new_textmatch(db, partnum, mystr, stem_strategy);
-            }
-            if (q && q->get_type() == Xapian::Query::LEAF_MATCH_NOTHING) {
-                delete q;
-                q = NULL;
-            }
+            q = query_new_textmatch(db, partnum, mystr);
         }
 
     } catch (const Xapian::Error &err) {
@@ -2260,7 +2271,6 @@ static Xapian::Query *xapian_query_new_match_internal(const xapian_db_t *db,
                          err.get_description().c_str());
     }
 
-done:
     free(mystr);
     return q;
 }
