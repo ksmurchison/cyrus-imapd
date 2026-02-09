@@ -2194,7 +2194,7 @@ static Xapian::Query *xapian_query_new_match_internal(const xapian_db_t *db,
     buf_free(&buf);
     if (!mystr) return NULL;
 
-    static Xapian::Query *q = NULL; // FIXME static????
+    Xapian::Query *q = NULL;
 
     try {
         // Handle special value search parts.
