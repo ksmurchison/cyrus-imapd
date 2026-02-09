@@ -122,8 +122,8 @@ static void test_getint32(void)
 
     /* test a string with too many digits */
     {
-        struct protstream *prot = NULL;
-        char *b = NULL;
+        struct protstream *volatile prot = NULL;
+        char *volatile b = NULL;
 
         CU_EXPECT_CYRFATAL_BEGIN;
             wrap_int_parser_nofree(prot, b, getint32, int32_t, STR3, &c, &val, NULL);
@@ -199,8 +199,8 @@ static void test_getsint32(void)
 
     /* test a string with too many digits */
     {
-        struct protstream *prot = NULL;
-        char *b = NULL;
+        struct protstream *volatile prot = NULL;
+        char *volatile b = NULL;
 
         CU_EXPECT_CYRFATAL_BEGIN;
             wrap_int_parser_nofree(prot, b, getsint32, int32_t, STR3, &c, &val, NULL);
@@ -274,8 +274,8 @@ static void test_getuint32(void)
 
     /* test a string with too many digits */
     {
-        struct protstream *prot = NULL;
-        char *b = NULL;
+        struct protstream *volatile prot = NULL;
+        char *volatile b = NULL;
 
         CU_EXPECT_CYRFATAL_BEGIN;
             wrap_int_parser_nofree(prot, b, getuint32, uint32_t, STR3, &c, &val, NULL);
@@ -349,8 +349,8 @@ static void test_getint64(void)
 
     /* test a string with too many digits */
     {
-        struct protstream *prot = NULL;
-        char *b = NULL;
+        struct protstream *volatile prot = NULL;
+        char *volatile b = NULL;
 
         CU_EXPECT_CYRFATAL_BEGIN;
             wrap_int_parser_nofree(prot, b, getint64, int64_t, STR3, &c, &val, NULL);
@@ -426,8 +426,8 @@ static void test_getsint64(void)
 
     /* test a string with too many digits */
     {
-        struct protstream *prot = NULL;
-        char *b = NULL;
+        struct protstream *volatile prot = NULL;
+        char *volatile b = NULL;
 
         CU_EXPECT_CYRFATAL_BEGIN;
             wrap_int_parser_nofree(prot, b, getsint64, int64_t, STR3, &c, &val, NULL);
@@ -501,8 +501,8 @@ static void test_getuint64(void)
 
     /* test a string with too many digits */
     {
-        struct protstream *prot = NULL;
-        char *b = NULL;
+        struct protstream *volatile prot = NULL;
+        char *volatile b = NULL;
 
         CU_EXPECT_CYRFATAL_BEGIN;
             wrap_int_parser_nofree(prot, b, getuint64, uint64_t, STR3, &c, &val, NULL);
