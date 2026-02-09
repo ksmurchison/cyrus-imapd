@@ -347,6 +347,6 @@ sub email_query_window_internal
     }
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/JMAPEmail';
+use Cassandane::Tiny::Loader;
 
 1;

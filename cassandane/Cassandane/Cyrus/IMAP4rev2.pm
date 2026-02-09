@@ -67,6 +67,6 @@ sub tear_down
     $self->SUPER::tear_down();
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/IMAP4rev2';
+use Cassandane::Tiny::Loader;
 
 1;

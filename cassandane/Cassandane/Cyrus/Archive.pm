@@ -67,6 +67,6 @@ sub tear_down
 
 1;
 
-use Cassandane::Tiny::Loader 'tiny-tests/Archive';
+use Cassandane::Tiny::Loader;
 
 1;

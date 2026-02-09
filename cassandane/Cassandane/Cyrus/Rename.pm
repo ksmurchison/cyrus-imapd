@@ -120,6 +120,6 @@ sub _dbset
     ));
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/Rename';
+use Cassandane::Tiny::Loader;
 
 1;

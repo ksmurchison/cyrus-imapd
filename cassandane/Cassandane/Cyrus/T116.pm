@@ -68,6 +68,6 @@ Cassandane::Cyrus::TestCase::magic(T116 => sub {
     $testcase->config_set(virtdomains => 'userid');
 });
 
-use Cassandane::Tiny::Loader 'tiny-tests/T116';
+use Cassandane::Tiny::Loader;
 
 1;

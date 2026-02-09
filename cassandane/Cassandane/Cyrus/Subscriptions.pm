@@ -205,6 +205,6 @@ sub upgrade_from_2_common
                                         qr{upgrading user subscriptions});
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/Subscriptions';
+use Cassandane::Tiny::Loader;
 
 1;

@@ -78,6 +78,6 @@ sub tear_down
 
 # see also LDAP.pm for groupid tests
 
-use Cassandane::Tiny::Loader 'tiny-tests/ACL';
+use Cassandane::Tiny::Loader;
 
 1;

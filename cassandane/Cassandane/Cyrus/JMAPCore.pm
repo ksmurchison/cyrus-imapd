@@ -81,6 +81,6 @@ sub new
     return $self;
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/JMAPCore';
+use Cassandane::Tiny::Loader;
 
 1;

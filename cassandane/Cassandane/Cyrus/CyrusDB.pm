@@ -89,6 +89,6 @@ sub create_empty_file
     close $fh;
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/CyrusDB';
+use Cassandane::Tiny::Loader;
 
 1;

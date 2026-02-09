@@ -330,6 +330,6 @@ sub put_email
     $self->make_message("message $counter");
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/MaxMessages';
+use Cassandane::Tiny::Loader;
 
 1;

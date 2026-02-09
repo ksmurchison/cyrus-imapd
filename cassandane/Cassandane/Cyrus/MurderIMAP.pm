@@ -81,6 +81,6 @@ sub tear_down
 # XXX test_xfer_mboxpattern
 # XXX shared mailboxes!
 
-use Cassandane::Tiny::Loader 'tiny-tests/MurderIMAP';
+use Cassandane::Tiny::Loader;
 
 1;

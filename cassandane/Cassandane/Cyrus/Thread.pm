@@ -52,6 +52,6 @@ sub new
     return $class->SUPER::new({}, @_);
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/Thread';
+use Cassandane::Tiny::Loader;
 
 1;

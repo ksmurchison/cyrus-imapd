@@ -92,6 +92,6 @@ sub bogustest_aaa_imapjmap_setup
     $self->assert(1);
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/MurderJMAP';
+use Cassandane::Tiny::Loader;
 
 1;

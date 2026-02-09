@@ -98,6 +98,6 @@ sub set_up
     }
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/JMAPBackup';
+use Cassandane::Tiny::Loader;
 
 1;

@@ -93,6 +93,6 @@ sub bogustest_aaa_imapdav_setup
     $self->assert(1);
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/MurderDAV';
+use Cassandane::Tiny::Loader;
 
 1;

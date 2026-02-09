@@ -108,6 +108,6 @@ sub start_my_instances
 # Note: remove_annotation can't really be tested with local
 # delivery, just with the APPEND command.
 
-use Cassandane::Tiny::Loader 'tiny-tests/Annotator';
+use Cassandane::Tiny::Loader;
 
 1;

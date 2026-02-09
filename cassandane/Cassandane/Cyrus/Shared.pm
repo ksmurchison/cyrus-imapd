@@ -201,6 +201,6 @@ sub shared_subscribe_common
     });
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/Shared';
+use Cassandane::Tiny::Loader;
 
 1;

@@ -77,6 +77,6 @@ sub fudge_mtimes
     }
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/CtlMboxlist';
+use Cassandane::Tiny::Loader;
 
 1;

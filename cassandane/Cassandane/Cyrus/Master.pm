@@ -382,6 +382,6 @@ sub XXX_test_service_associate_fail
         $self->lemming_census());
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/Master';
+use Cassandane::Tiny::Loader;
 
 1;

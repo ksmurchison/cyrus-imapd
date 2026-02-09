@@ -89,6 +89,6 @@ sub run_squatter
     return (slurp_file($outfname), slurp_file($errfname));
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/SearchSquat';
+use Cassandane::Tiny::Loader;
 
 1;

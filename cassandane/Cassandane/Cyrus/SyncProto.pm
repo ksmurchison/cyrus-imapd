@@ -66,6 +66,6 @@ sub tear_down
     $self->SUPER::tear_down();
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/SyncProto';
+use Cassandane::Tiny::Loader;
 
 1;

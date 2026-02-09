@@ -184,6 +184,6 @@ sub do_https_request
     return $response;
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/ALPN';
+use Cassandane::Tiny::Loader;
 
 1;

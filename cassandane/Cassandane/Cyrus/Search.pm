@@ -81,6 +81,6 @@ sub _fgrep_msgs
     return \@res;
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/Search';
+use Cassandane::Tiny::Loader;
 
 1;

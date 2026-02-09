@@ -264,6 +264,6 @@ sub common_shutdownfile
     $self->assert_matches(qr/IMAP Connection closed by other end/, $mm);
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/Idle';
+use Cassandane::Tiny::Loader;
 
 1;

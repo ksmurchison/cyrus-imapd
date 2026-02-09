@@ -89,6 +89,6 @@ sub imap_cmd_with_tag
     return $talk->_imap_cmd(@args);
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/Alpaca';
+use Cassandane::Tiny::Loader;
 
 1;

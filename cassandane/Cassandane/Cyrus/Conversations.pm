@@ -397,6 +397,6 @@ sub bogus_test_cross_user_copy
     $self->check_messages(\%bobexp, store => $bobstore);
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/Conversations';
+use Cassandane::Tiny::Loader;
 
 1;

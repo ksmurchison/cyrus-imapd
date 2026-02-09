@@ -93,6 +93,6 @@ Cassandane::Cyrus::TestCase::magic(AllowNewNews => sub {
     shift->config_set(allownewnews => 1);
 });
 
-use Cassandane::Tiny::Loader 'tiny-tests/Nntp';
+use Cassandane::Tiny::Loader;
 
 1;

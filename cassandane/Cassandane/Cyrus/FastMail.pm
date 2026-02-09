@@ -234,6 +234,6 @@ sub _fmjmap_err
     return $res->[1];
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/FastMail';
+use Cassandane::Tiny::Loader;
 
 1;

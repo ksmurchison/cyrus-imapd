@@ -209,6 +209,6 @@ sub do_test_list_order
     $self->assert_deep_equals(\@boxes, \@expect);
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/LDAP';
+use Cassandane::Tiny::Loader;
 
 1;

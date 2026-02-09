@@ -113,6 +113,6 @@ sub get_highestmodseq
     return 0 + $stat->{highestmodseq};
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/Flags';
+use Cassandane::Tiny::Loader;
 
 1;

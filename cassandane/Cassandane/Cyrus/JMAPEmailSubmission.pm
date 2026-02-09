@@ -107,6 +107,6 @@ sub getinbox
     return $m{"Inbox"};
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/JMAPEmailSubmission';
+use Cassandane::Tiny::Loader;
 
 1;

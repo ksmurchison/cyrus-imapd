@@ -64,6 +64,6 @@ sub tear_down
 }
 
 
-use Cassandane::Tiny::Loader 'tiny-tests/Specialuse';
+use Cassandane::Tiny::Loader;
 # compile
 1;

@@ -160,6 +160,6 @@ sub check_syslog
     $self->assert_null($instance->_check_syslog($remove_empty_pat));
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/Delete';
+use Cassandane::Tiny::Loader;
 
 1;

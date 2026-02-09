@@ -181,6 +181,6 @@ sub slowtest_50000_users
         $report->{'cyrus_usage_quota_commitment'}->{'partition="default",resource="STORAGE"'}->{value});
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/Prometheus';
+use Cassandane::Tiny::Loader;
 
 1;

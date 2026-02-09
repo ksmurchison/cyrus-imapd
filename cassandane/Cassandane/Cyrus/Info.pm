@@ -99,6 +99,6 @@ sub _set_and_get_fields {
     }
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/Info';
+use Cassandane::Tiny::Loader;
 
 1;
