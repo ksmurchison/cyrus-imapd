@@ -12616,6 +12616,11 @@ static int _card_set_update(jmap_req_t *req, bool apply_empty_updates,
     }
 
     if (num_props) {
+        /* Always work with a v4 card so we have "clean" MEMBER properties */
+        if (cdata->version == 3) {
+            vcardcomponent_transform(vcard, VCARD_VERSION_40);
+        }
+
         /* Convert the vCard to a JSContact Card. */
         json_t *old_obj = jmap_card_from_vcard(req->userid, vcard,
                                                db, *mailbox, &record,
