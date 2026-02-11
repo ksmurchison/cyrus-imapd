@@ -311,6 +311,6 @@ sub squatter_attachextract_cache_run
         'squatter', "--attachextract-cache-dir=$cachedir", @squatterArgs);
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/SearchFuzzy';
+use Cassandane::Tiny::Loader;
 
 1;

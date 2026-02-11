@@ -7,9 +7,13 @@ use Carp ();
 our $RELOADED;
 
 sub import {
-  my ($class, $path) = @_;
+  my ($class) = @_;
 
   my $into = caller;
+
+  my ($moniker) = $into =~ /\ACassandane::Cyrus::([_0-9A-Za-z]+)\z/;
+
+  my $path = "tiny-tests/$moniker";
 
   unless (-d $path) {
     Carp::confess(qq{can't find path "$path" for loading tests; Cassandane expects to be run from the ./cyrus-imapd/cassandane directory"});

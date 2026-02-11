@@ -334,6 +334,6 @@ sub sentdate_ts {
     return mktime(@lt);
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/MailboxVersion';
+use Cassandane::Tiny::Loader;
 
 1;

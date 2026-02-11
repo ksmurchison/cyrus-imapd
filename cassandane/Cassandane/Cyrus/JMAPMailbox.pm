@@ -151,6 +151,6 @@ sub _check_counts
     }
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/JMAPMailbox';
+use Cassandane::Tiny::Loader;
 
 1;

@@ -471,6 +471,6 @@ sub getmetadata
     return $res;
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/Metadata';
+use Cassandane::Tiny::Loader;
 
 1;

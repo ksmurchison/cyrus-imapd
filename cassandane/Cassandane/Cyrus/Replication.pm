@@ -102,6 +102,6 @@ sub assert_user_sub_not_exists
     $self->assert_not_file_test($subs, '-f');
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/Replication';
+use Cassandane::Tiny::Loader;
 
 1;

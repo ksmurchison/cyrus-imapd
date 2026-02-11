@@ -78,6 +78,6 @@ sub set_up
     ]);
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/TestEntities';
+use Cassandane::Tiny::Loader;
 
 1;
