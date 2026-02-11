@@ -178,9 +178,6 @@ static jmap_method_t jmap_mail_methods_nonstandard[] = {
 };
 // clang-format on
 
-static jmap_property_set_t email_props  = JMAP_PROPERTY_SET_INITIALIZER;
-static jmap_property_set_t thread_props = JMAP_PROPERTY_SET_INITIALIZER;
-
 /* NULL terminated list of supported jmap_email_query sort fields */
 struct email_sortfield {
     const char *name;
@@ -271,9 +268,6 @@ static ptrarray_t empty_ptrarray = PTRARRAY_INITIALIZER;
 HIDDEN void jmap_mail_init(jmap_settings_t *settings)
 {
     jmap_add_methods(jmap_mail_methods_standard, settings);
-
-    jmap_build_prop_set(&jmap_email_props_map, &email_props, settings);
-    jmap_build_prop_set(&jmap_thread_props_map, &thread_props, settings);
 
     json_object_set_new(settings->server_capabilities,
             JMAP_URN_MAIL, json_object());

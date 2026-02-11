@@ -60,11 +60,3 @@ jmap_property_t;
 "blobId",        JMAP_CONTACTS_EXTENSION, JMAP_PROP_SERVER_SET
 "size",          JMAP_CONTACTS_EXTENSION, JMAP_PROP_SERVER_SET
 %%
-
-static const jmap_prop_hash_table_t jmap_contact_props_map = {
-    contact_prop_array,
-    CONTACT_PROP_TOTAL_KEYWORDS,
-    CONTACT_PROP_MIN_HASH_VALUE,
-    CONTACT_PROP_MAX_HASH_VALUE,
-    &contact_prop_lookup
-};

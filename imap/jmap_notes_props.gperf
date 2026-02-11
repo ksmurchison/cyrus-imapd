@@ -31,11 +31,3 @@ jmap_property_t;
 "body",      NULL, 0
 "isHTML",    NULL, 0
 %%
-
-static const jmap_prop_hash_table_t jmap_notes_props_map = {
-    notes_prop_array,
-    NOTES_PROP_TOTAL_KEYWORDS,
-    NOTES_PROP_MIN_HASH_VALUE,
-    NOTES_PROP_MAX_HASH_VALUE,
-    &notes_prop_lookup
-};

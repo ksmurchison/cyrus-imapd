@@ -60,9 +60,6 @@ static jmap_method_t jmap_quota_methods_nonstandard[] = {
 };
 // clang-format on
 
-static jmap_property_set_t quota_props        = JMAP_PROPERTY_SET_INITIALIZER;
-static jmap_property_set_t legacy_quota_props = JMAP_PROPERTY_SET_INITIALIZER;
-
 HIDDEN void jmap_quota_init(jmap_settings_t *settings)
 {
     json_object_set_new(settings->server_capabilities,
@@ -70,16 +67,11 @@ HIDDEN void jmap_quota_init(jmap_settings_t *settings)
 
     jmap_add_methods(jmap_quota_methods_standard, settings);
 
-    jmap_build_prop_set(&jmap_quota_props_map, &quota_props, settings);
-
     if (config_getswitch(IMAPOPT_JMAP_NONSTANDARD_EXTENSIONS)) {
         json_object_set_new(settings->server_capabilities,
                 JMAP_QUOTA_EXTENSION, json_object());
 
         jmap_add_methods(jmap_quota_methods_nonstandard, settings);
-
-        jmap_build_prop_set(&jmap_quota_legacy_props_map,
-                            &legacy_quota_props, settings);
     }
 }
 
@@ -103,7 +95,7 @@ static int jmap_legacy_quota_get(jmap_req_t *req)
     char *inboxname = mboxname_user_mbox(req->accountid, NULL);
 
     /* Parse request */
-    jmap_get_parse(req, &parser, &legacy_quota_props, /*allow_null_ids*/1,
+    jmap_get_parse(req, &parser, &quota_legacy_props, /*allow_null_ids*/1,
                    NULL, NULL, &get, &err);
     if (err) {
         jmap_error(req, err);

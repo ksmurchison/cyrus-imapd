@@ -28,11 +28,3 @@ jmap_property_t;
 "used",  NULL, JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE
 "total", NULL, JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE
 %%
-
-static const jmap_prop_hash_table_t jmap_quota_legacy_props_map = {
-    quota_legacy_prop_array,
-    QUOTA_LEGACY_PROP_TOTAL_KEYWORDS,
-    QUOTA_LEGACY_PROP_MIN_HASH_VALUE,
-    QUOTA_LEGACY_PROP_MAX_HASH_VALUE,
-    &quota_legacy_prop_lookup
-};

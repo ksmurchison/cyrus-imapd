@@ -37,11 +37,3 @@ jmap_property_t;
 # Both AJAXUI and JMAPUI
 "otherAccountContactIds", JMAP_CONTACTS_EXTENSION, 0
 %%
-
-static const jmap_prop_hash_table_t jmap_group_props_map = {
-    group_prop_array,
-    GROUP_PROP_TOTAL_KEYWORDS,
-    GROUP_PROP_MIN_HASH_VALUE,
-    GROUP_PROP_MAX_HASH_VALUE,
-    &group_prop_lookup
-};

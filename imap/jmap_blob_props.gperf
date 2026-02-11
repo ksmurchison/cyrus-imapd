@@ -32,11 +32,3 @@ jmap_property_t;
 "digest:sha-256", NULL, JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE | JMAP_PROP_SKIP_GET
 "size",           NULL, JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE
 %%
-
-static const jmap_prop_hash_table_t jmap_blob_props_map = {
-    blob_prop_array,
-    BLOB_PROP_TOTAL_KEYWORDS,
-    BLOB_PROP_MIN_HASH_VALUE,
-    BLOB_PROP_MAX_HASH_VALUE,
-    &blob_prop_lookup
-};

@@ -29,11 +29,3 @@ jmap_property_t;
 "defaultCalendarId",            NULL, 0
 "defaultParticipantIdentityId", NULL, 0
 %%
-
-static const jmap_prop_hash_table_t jmap_calendarpreferences_props_map = {
-    calendarpreferences_prop_array,
-    CALENDARPREFERENCES_PROP_TOTAL_KEYWORDS,
-    CALENDARPREFERENCES_PROP_MIN_HASH_VALUE,
-    CALENDARPREFERENCES_PROP_MAX_HASH_VALUE,
-    &calendarpreferences_prop_lookup
-};

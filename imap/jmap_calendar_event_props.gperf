@@ -16,11 +16,11 @@
 
 %define slot-name             name
 %define initializer-suffix    ,NULL,0
-%define constants-prefix      CALENDAREVENT_PROP_
-%define word-array-name       calendarevent_prop_array
-%define length-table-name     calendarevent_prop_lengths
-%define hash-function-name    calendarevent_prop_hash
-%define lookup-function-name  calendarevent_prop_lookup
+%define constants-prefix      EVENT_PROP_
+%define word-array-name       event_prop_array
+%define length-table-name     event_prop_lengths
+%define hash-function-name    event_prop_hash
+%define lookup-function-name  event_prop_lookup
 
 jmap_property_t;
 
@@ -86,11 +86,3 @@ jmap_property_t;
 "cyrusimap.org:iCalProps", JMAP_CALENDARS_EXTENSION, JMAP_PROP_SERVER_SET | JMAP_PROP_SKIP_GET
 "debugBlobId",             JMAP_DEBUG_EXTENSION,     JMAP_PROP_SERVER_SET
 %%
-
-static const jmap_prop_hash_table_t jmap_calendarevent_props_map = {
-    calendarevent_prop_array,
-    CALENDAREVENT_PROP_TOTAL_KEYWORDS,
-    CALENDAREVENT_PROP_MIN_HASH_VALUE,
-    CALENDAREVENT_PROP_MAX_HASH_VALUE,
-    &calendarevent_prop_lookup
-};

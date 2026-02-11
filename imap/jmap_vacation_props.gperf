@@ -32,11 +32,3 @@ jmap_property_t;
 "textBody",  NULL, 0
 "htmlBody",  NULL, 0
 %%
-
-static const jmap_prop_hash_table_t jmap_vacation_props_map = {
-    vacation_prop_array,
-    VACATION_PROP_TOTAL_KEYWORDS,
-    VACATION_PROP_MIN_HASH_VALUE,
-    VACATION_PROP_MAX_HASH_VALUE,
-    &vacation_prop_lookup
-};

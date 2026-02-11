@@ -54,11 +54,3 @@ jmap_property_t;
 "raclModSeq",                      NULL, JMAP_PROP_SERVER_SET
 "uidValidity",                     NULL, JMAP_PROP_SERVER_SET
 %%
-
-static const jmap_prop_hash_table_t jmap_usercounters_props_map = {
-    usercounters_prop_array,
-    USERCOUNTERS_PROP_TOTAL_KEYWORDS,
-    USERCOUNTERS_PROP_MIN_HASH_VALUE,
-    USERCOUNTERS_PROP_MAX_HASH_VALUE,
-    &usercounters_prop_lookup
-};

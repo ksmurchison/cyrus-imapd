@@ -35,11 +35,3 @@ jmap_property_t;
 "event",           NULL, JMAP_PROP_SERVER_SET
 "eventPatch",      NULL, JMAP_PROP_SERVER_SET
 %%
-
-static const jmap_prop_hash_table_t jmap_calendareventnotification_props_map = {
-    eventnotification_prop_array,
-    EVENTNOTIFICATION_PROP_TOTAL_KEYWORDS,
-    EVENTNOTIFICATION_PROP_MIN_HASH_VALUE,
-    EVENTNOTIFICATION_PROP_MAX_HASH_VALUE,
-    &eventnotification_prop_lookup
-};

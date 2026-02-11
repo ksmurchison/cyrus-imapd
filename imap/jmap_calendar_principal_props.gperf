@@ -36,11 +36,3 @@ jmap_property_t;
 "account",            NULL, JMAP_PROP_SERVER_SET
 "sendTo",             NULL, JMAP_PROP_SERVER_SET
 %%
-
-static const jmap_prop_hash_table_t jmap_calendarprincipal_props_map = {
-    calendarprincipal_prop_array,
-    CALENDARPRINCIPAL_PROP_TOTAL_KEYWORDS,
-    CALENDARPRINCIPAL_PROP_MIN_HASH_VALUE,
-    CALENDARPRINCIPAL_PROP_MAX_HASH_VALUE,
-    &calendarprincipal_prop_lookup
-};
