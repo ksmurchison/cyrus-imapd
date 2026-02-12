@@ -302,7 +302,7 @@ extern int message_get_references(message_t *m, struct buf *buf);
 extern int message_get_subject(message_t *m, struct buf *buf);
 extern int message_get_priority(message_t *m, struct buf *buf);
 extern int message_get_gmtime(message_t *m, time_t *tp);
-extern int message_get_mailbox(message_t *m, struct mailbox **);
+extern int message_get_mailbox(message_t *m, const struct mailbox **);
 extern int message_get_uid(message_t *m, uint32_t *uidp);
 extern int message_get_cid(message_t *m, conversation_id_t *cidp);
 extern int message_get_guid(message_t *m, const struct message_guid **guidp);
