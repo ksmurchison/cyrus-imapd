@@ -2481,6 +2481,17 @@ static int search_language_match(message_t *m __attribute__((unused)),
     return 1;
 }
 
+static int search_icalendar_match(message_t *m __attribute__((unused)),
+                                 const union search_value *v __attribute__((unused)),
+                                 void *internalised __attribute__((unused)),
+                                 void *data1 __attribute__((unused)))
+{
+    /* icalendar matching must be done in the backend */
+    syslog(LOG_WARNING, "%s: ignoring icalendar search attribute", __func__);
+    return 0;
+}
+
+
 /* ====================================================================== */
 
 static void search_seen_internalise(struct index_state *state,
@@ -3140,7 +3151,7 @@ EXPORTED void search_attr_init(void)
             SEARCH_COST_BODY,
             search_string_internalise,
             /*cmp*/NULL,
-            search_string_match,
+            search_icalendar_match,
             search_string_serialise,
             search_string_unserialise,
             /*get_countability*/NULL,
@@ -3221,6 +3232,70 @@ EXPORTED void search_attr_init(void)
             search_seen_internalise,
             /*cmp*/NULL,
             search_seen_match,
+            search_string_serialise,
+            search_string_unserialise,
+            /*get_countability*/NULL,
+            search_string_duplicate,
+            search_string_free,
+            /*freeattr*/NULL,
+            /*dupattr*/NULL,
+            (void *)0
+        }, {
+            "calorganizer", /* for iCalendar */
+            SEA_FUZZABLE,
+            SEARCH_PART_CALORGANIZER,
+            SEARCH_COST_BODY,
+            search_string_internalise,
+            /*cmp*/NULL,
+            search_icalendar_match,
+            search_string_serialise,
+            search_string_unserialise,
+            /*get_countability*/NULL,
+            search_string_duplicate,
+            search_string_free,
+            /*freeattr*/NULL,
+            /*dupattr*/NULL,
+            (void *)0
+        }, {
+            "calattendee", /* for iCalendar */
+            SEA_FUZZABLE,
+            SEARCH_PART_CALATTENDEE,
+            SEARCH_COST_BODY,
+            search_string_internalise,
+            /*cmp*/NULL,
+            search_icalendar_match,
+            search_string_serialise,
+            search_string_unserialise,
+            /*get_countability*/NULL,
+            search_string_duplicate,
+            search_string_free,
+            /*freeattr*/NULL,
+            /*dupattr*/NULL,
+            (void *)0
+        }, {
+            "calsummary", /* for iCalendar */
+            SEA_FUZZABLE,
+            SEARCH_PART_CALSUMMARY,
+            SEARCH_COST_BODY,
+            search_string_internalise,
+            /*cmp*/NULL,
+            search_icalendar_match,
+            search_string_serialise,
+            search_string_unserialise,
+            /*get_countability*/NULL,
+            search_string_duplicate,
+            search_string_free,
+            /*freeattr*/NULL,
+            /*dupattr*/NULL,
+            (void *)0
+        }, {
+            "caldescription", /* for iCalendar */
+            SEA_FUZZABLE,
+            SEARCH_PART_CALDESCRIPTION,
+            SEARCH_COST_BODY,
+            search_string_internalise,
+            /*cmp*/NULL,
+            search_icalendar_match,
             search_string_serialise,
             search_string_unserialise,
             /*get_countability*/NULL,

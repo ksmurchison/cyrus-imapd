@@ -79,8 +79,9 @@ static void make_cyrusid(struct buf *dst, const struct message_guid *guid, char 
  * Version 15: receives indexed header fields and text in original format (rather than search form)
  * Version 16: indexes entire addr-spec as a single value.  Prevents cross-matching localparts and domains
  * Version 17: normalizes text using libicu's NFKC with CaseFolding. Default stemmer keeps using lowercase Cyrus Search Form.
+ * Version 18: uses new search parts CALORGANIZER, CALATTENDEE, CALSUMMARY and CALDESCRIPTION to index calendar event ORGANIZER, ATTENDEE, SUMMARY, DESCRIPTION. Before, these were indexed as FROM, TO, SUBJECT and BODY search parts.
  */
-#define XAPIAN_DB_CURRENT_VERSION 17
+#define XAPIAN_DB_CURRENT_VERSION 18
 #define XAPIAN_DB_MIN_SUPPORTED_VERSION 5
 
 static std::set<int> read_db_versions(const Xapian::Database &database)
@@ -621,6 +622,10 @@ static std::string get_term_prefix(enum search_part partnum)
         "XMM",               /* MESSAGEID */
         "XMR",               /* REFERENCES */
         "XMI",               /* INREPLYTO */
+        "XCO",               /* CALORGANIZER */
+        "XCA",               /* CALATTENDEE */
+        "XCS",               /* CALSUMMARY */
+        "XCD",               /* CALDESCRIPTION */
     };
 
     return term_prefixes[partnum];
@@ -649,6 +654,10 @@ static Xapian::TermGenerator::stem_strategy get_stem_strategy(enum search_part p
         Xapian::TermGenerator::STEM_NONE,  /* MESSAGEID */
         Xapian::TermGenerator::STEM_NONE,  /* REFERENCES */
         Xapian::TermGenerator::STEM_NONE,  /* INREPLYTO */
+        Xapian::TermGenerator::STEM_NONE,  /* CALORGANIZER */
+        Xapian::TermGenerator::STEM_NONE,  /* CALATTENDEE */
+        Xapian::TermGenerator::STEM_SOME,  /* CALSUMMARY */
+        Xapian::TermGenerator::STEM_SOME,  /* CALDESCRIPTION */
     };
 
     return stem_strategy[partnum];
@@ -1236,6 +1245,8 @@ EXPORTED int xapian_dbw_doc_part(xapian_dbw_t *dbw,
             case SEARCH_PART_CC:
             case SEARCH_PART_BCC:
             case SEARCH_PART_DELIVEREDTO:
+            case SEARCH_PART_CALORGANIZER:
+            case SEARCH_PART_CALATTENDEE:
                 r = add_email_part(dbw, part, partnum);
                 break;
             case SEARCH_PART_TYPE:
@@ -1411,6 +1422,11 @@ static int xapian_db_init(xapian_db_t *db, int is_inmemory)
     return r;
 }
 
+static bool xapian_db_has_version_lower_than(const xapian_db_t *db, unsigned v)
+{
+    return db->db_versions->lower_bound(v) != db->db_versions->begin();
+}
+
 EXPORTED int xapian_db_open(const char **paths, xapian_db_t **dbp)
 {
     xapian_db_t *db = (xapian_db_t *)xzmalloc(sizeof(xapian_db_t));
@@ -1557,10 +1573,10 @@ EXPORTED void xapian_query_add_stemmer(xapian_db_t *db, const char *iso_lang)
         db->stem_languages->insert(iso_lang);
 }
 
-static Xapian::Query* query_new_textmatch(const xapian_db_t *db,
-                                          enum search_part partnum,
-                                          const char *match,
-                                          Xapian::TermGenerator::stem_strategy tg_stem_strategy)
+static Xapian::Query* query_new_textmatch_internal(const xapian_db_t *db,
+                                                   enum search_part partnum,
+                                                   const char *match,
+                                                   Xapian::TermGenerator::stem_strategy tg_stem_strategy)
 {
     unsigned flags = Xapian::QueryParser::FLAG_PHRASE |
                      Xapian::QueryParser::FLAG_WILDCARD;
@@ -1649,7 +1665,7 @@ static Xapian::Query *query_new_listid(const xapian_db_t *db,
         q = new Xapian::Query(Xapian::Query::MatchNothing);
     }
 
-    if (db->db_versions->lower_bound(11) != db->db_versions->begin()) {
+    if (xapian_db_has_version_lower_than(db, 11)) {
         // query in legacy format
         db->parser->set_stemmer(Xapian::Stem());
         db->parser->set_stopper(NULL);
@@ -1758,7 +1774,7 @@ static Xapian::Query *query_new_email(const xapian_db_t *db,
 
     if (!addr) {
         Xapian::Query q = Xapian::Query::MatchNothing;
-        if (db->db_versions->lower_bound(12) != db->db_versions->begin()) {
+        if (xapian_db_has_version_lower_than(db, 12)) {
             // query in legacy format
             q |= db->parser->parse_query(searchstr, queryflags, prefix);
         }
@@ -1803,8 +1819,7 @@ static Xapian::Query *query_new_email(const xapian_db_t *db,
                     free(a);
                 }
 
-                if (db->db_versions->lower_bound(16) !=
-                        db->db_versions->begin()) {
+                if (xapian_db_has_version_lower_than(db, 16)) {
                     // Database version 15 did not index complete addresses
                     // with A prefix, but rather indexed localpart and domain
                     // separately, using L and D prefixes.
@@ -1883,7 +1898,7 @@ static Xapian::Query *query_new_email(const xapian_db_t *db,
                 queries.end());
     }
 
-    if (db->db_versions->lower_bound(12) != db->db_versions->begin()) {
+    if (xapian_db_has_version_lower_than(db, 12)) {
         // query in legacy format as well
         q |= db->parser->parse_query(searchstr, queryflags, prefix);
     }
@@ -1911,7 +1926,7 @@ static Xapian::Query *query_new_type(const xapian_db_t *db __attribute__((unused
     std::string prefix(get_term_prefix(partnum));
     Xapian::Query q = Xapian::Query::MatchNothing;
 
-    bool query_legacy = db->db_versions->lower_bound(13) != db->db_versions->begin();
+    bool query_legacy = xapian_db_has_version_lower_than(db, 13);
     struct buf buf = BUF_INITIALIZER;
     unsigned qpflags = Xapian::QueryParser::FLAG_PHRASE |
                        Xapian::QueryParser::FLAG_WILDCARD;
@@ -2176,6 +2191,45 @@ static Xapian::Query *xapian_query_new_numbermatch(enum search_part partnum,
     return new Xapian::Query(q);
 }
 
+static Xapian::Query* query_new_textmatch(const xapian_db_t *db,
+                                          enum search_part partnum,
+                                          const char *mystr)
+{
+    Xapian::Query *q = NULL;
+
+    if (isdigit(mystr[0])) {
+        // Try parsing the query string as a number.
+        q = xapian_query_new_numbermatch(partnum, mystr);
+        if (q) return q;
+        // Fall through handling it as arbitrary text.
+    }
+
+    // Match unstructured search parts
+    int need_word_break = 0;
+    for (const unsigned char *p = (const unsigned char *)mystr; *p; p++) {
+        // Use ICU word break for Thaana codepage (0780) or higher.
+        if (*p > 221) {
+            need_word_break = 1;
+            break;
+        }
+    }
+
+    if (need_word_break) {
+        q = xapian_query_new_match_word_break(db, partnum, mystr);
+    }
+    else {
+        Xapian::TermGenerator::stem_strategy stem_strategy =
+            get_stem_strategy(partnum);
+        q = query_new_textmatch_internal(db, partnum, mystr, stem_strategy);
+    }
+    if (q && q->get_type() == Xapian::Query::LEAF_MATCH_NOTHING) {
+        delete q;
+        q = NULL;
+    }
+
+    return q;
+}
+
 static Xapian::Query *xapian_query_new_match_internal(const xapian_db_t *db,
                                                       enum search_part partnum,
                                                       const char *str,
@@ -2190,7 +2244,7 @@ static Xapian::Query *xapian_query_new_match_internal(const xapian_db_t *db,
     buf_free(&buf);
     if (!mystr) return NULL;
 
-    static Xapian::Query *q = NULL; // FIXME static????
+    Xapian::Query *q = NULL;
 
     try {
         // Handle special value search parts.
@@ -2210,6 +2264,23 @@ static Xapian::Query *xapian_query_new_match_internal(const xapian_db_t *db,
                  partnum == SEARCH_PART_DELIVEREDTO) {
             q = query_new_email(db, partnum, mystr);
         }
+        else if (partnum == SEARCH_PART_CALORGANIZER ||
+                 partnum == SEARCH_PART_CALATTENDEE) {
+            q = query_new_email(db, partnum, mystr);
+            if (q && xapian_db_has_version_lower_than(db, 18)) {
+                // Versions <= 17 indexed iCalendar ORGANIZER
+                // and ATTENDEE as FROM and TO search parts.
+                Xapian::Query *qq = query_new_email(
+                    db,
+                    partnum == SEARCH_PART_CALORGANIZER ? SEARCH_PART_FROM
+                                                        : SEARCH_PART_TO,
+                    mystr);
+                if (qq) {
+                    *q |= *qq;
+                    delete qq;
+                }
+            }
+        }
         else if (partnum == SEARCH_PART_TYPE) {
             q = query_new_type(db, partnum, mystr);
         }
@@ -2218,36 +2289,25 @@ static Xapian::Query *xapian_query_new_match_internal(const xapian_db_t *db,
                 partnum == SEARCH_PART_REFERENCES) {
             q = query_new_messageid(db, partnum, mystr);
         }
-        else {
-            if (isdigit(mystr[0])) {
-                // Try parsing the query string as a number.
-                q = xapian_query_new_numbermatch(partnum, mystr);
-                if (q) goto done;
-                // Fall through handling it as arbitrary text.
-            }
-
-            // Match unstructured search parts
-            int need_word_break = 0;
-            for (const unsigned char *p = (const unsigned char *)mystr; *p; p++) {
-                // Use ICU word break for Thaana codepage (0780) or higher.
-                if (*p > 221) {
-                    need_word_break = 1;
-                    break;
+        else if (partnum == SEARCH_PART_CALSUMMARY ||
+                 partnum == SEARCH_PART_CALDESCRIPTION) {
+            q = query_new_textmatch(db, partnum, mystr);
+            if (q && xapian_db_has_version_lower_than(db, 18)) {
+                // Versions <= 17 indexed iCalendar SUMMARY
+                // and DESCRIPTION as SUBJECT and BODY search parts.
+                Xapian::Query *qq = query_new_textmatch(
+                    db,
+                    partnum == SEARCH_PART_CALSUMMARY ? SEARCH_PART_SUBJECT
+                                                      : SEARCH_PART_BODY,
+                    mystr);
+                if (qq) {
+                    *q |= *qq;
+                    delete qq;
                 }
             }
-
-            if (need_word_break) {
-                q = xapian_query_new_match_word_break(db, partnum, mystr);
-            }
-            else {
-                Xapian::TermGenerator::stem_strategy stem_strategy =
-                    get_stem_strategy(partnum);
-                q = query_new_textmatch(db, partnum, mystr, stem_strategy);
-            }
-            if (q && q->get_type() == Xapian::Query::LEAF_MATCH_NOTHING) {
-                delete q;
-                q = NULL;
-            }
+        }
+        else {
+            q = query_new_textmatch(db, partnum, mystr);
         }
 
     } catch (const Xapian::Error &err) {
@@ -2256,7 +2316,6 @@ static Xapian::Query *xapian_query_new_match_internal(const xapian_db_t *db,
                          err.get_description().c_str());
     }
 
-done:
     free(mystr);
     return q;
 }
