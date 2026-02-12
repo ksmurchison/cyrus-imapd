@@ -1566,6 +1566,11 @@ static xapian_query_t *opnode_to_query(const xapian_db_t *db, struct opnode *on,
                 case SEARCH_PART_TYPE:
                 case SEARCH_PART_LANGUAGE:
                 case SEARCH_PART_PRIORITY:
+                case SEARCH_PART_CALORGANIZER:
+                case SEARCH_PART_CALATTENDEE:
+                case SEARCH_PART_CALSUMMARY:
+                case SEARCH_PART_CALDESCRIPTION:
+                case SEARCH_PART_LOCATION:
                     continue;
                 case SEARCH_PART_ATTACHMENTBODY:
                     if (!(opts & SEARCH_ATTACHMENTS_IN_ANY)) {

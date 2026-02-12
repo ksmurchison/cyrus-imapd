@@ -1,0 +1,121 @@
+#!perl
+use Cassandane::Tiny;
+
+sub test_email_query_ignore_calendar
+  : needs_component_jmap
+    ($self)
+{
+    my $jmap = $self->{jmap};
+
+    # This asserts that the contents of iCalendar attachments are
+    # ignored in Email/query. This hasn't always been the case, a
+    # previous version of Cyrus reused the FROM, TO, SUBJECT and
+    # BODY search parts to index and query the iCalendar ORGANIZER,
+    # ATTENDEE, SUMMARY and DESCRIPTION properties. These iCalendar
+    # elements now get indexed to separate search parts.
+
+    my $res = $jmap->CallMethods([
+        ['Email/set', {
+            create => {
+                1 => {
+                    from => [{ email => 'foo@example.com' }],
+                    to => [{ email => 'bar@example.com' }],
+                    subject => 'baz',
+                    mailboxIds => {
+                        '$inbox' => JSON::true,
+                    },
+                    bodyStructure => {
+                        type => 'text/plain',
+                        partId => '1',
+                    },
+                    bodyValues => { '1' => { value => 'bam' } },
+                },
+                2 => {
+                    from => [{ email => 'bar@example.com' }],
+                    to => [{ email => 'foo@example.com' }],
+                    subject => 'test2',
+                    mailboxIds => {
+                        '$inbox' => JSON::true,
+                    },
+                    bodyStructure => {
+                        type => 'multipart/mixed',
+                        subParts => [{
+                            type => 'text/plain',
+                            partId => '1',
+                        }, {
+                            type => 'text/calendar',
+                            partId => '2',
+                        }],
+                    },
+                    bodyValues => {
+                        '1' => { value => 'test2' },
+                        '2' => { value =>
+                            "BEGIN:VCALENDAR\r\n" .
+                            "VERSION:2.0\r\n" .
+                            "PRODID:-//Foo//Bar//EN\r\n" .
+                            "CALSCALE:GREGORIAN\r\n" .
+                            "BEGIN:VEVENT\r\n" .
+                            "DTSTART;TZID=Europe/Vienna:20160928T160000\r\n" .
+                            "DTEND;TZID=Europe/Vienna:20160928T170000\r\n" .
+                            "UID:cbbd08c0-8e14-44e7-a6f2-b41faacb832d\r\n" .
+                            "DTSTAMP:20150928T132434Z\r\n" .
+                            "SUMMARY:baz\r\n" .
+                            "DESCRIPTION:bam\r\n" .
+                            "ATTENDEE:mailto:bar\@example.com\r\n" .
+                            "ORGANIZER;CN=\"Organizer\":mailto:foo\@example.com\r\n" .
+                            "END:VEVENT\r\n" .
+                            "END:VCALENDAR\r\n"
+                        }
+                    },
+                },
+            },
+        }, 'R1'],
+    ]);
+
+    my $email1Id = $res->[0][1]{created}{1}{id};
+    $self->assert_not_null($email1Id);
+    my $email2Id = $res->[0][1]{created}{2}{id};
+    $self->assert_not_null($email2Id);
+
+    $self->{instance}->run_command({ cyrus => 1 }, 'squatter');
+
+    $res = $jmap->CallMethods([
+        ['Email/query', {
+            filter => {
+                from => 'foo@example.com'
+            },
+        }, 'R0'],
+        ['Email/query', {
+            filter => {
+                to => 'bar@example.com'
+            },
+        }, 'R1'],
+        ['Email/query', {
+            filter => {
+                subject => 'baz'
+            },
+        }, 'R2'],
+        ['Email/query', {
+            filter => {
+                body => 'bam'
+            },
+        }, 'R3'],
+        ['Email/query', {
+            filter => {
+                text => 'baz'
+            },
+        }, 'R4'],
+        ['Email/query', {
+            filter => {
+                text => 'bam'
+            },
+        }, 'R5'],
+    ]);
+
+    $self->assert_cmp_deeply([$email1Id], $res->[0][1]{ids});
+    $self->assert_cmp_deeply([$email1Id], $res->[1][1]{ids});
+    $self->assert_cmp_deeply([$email1Id], $res->[2][1]{ids});
+    $self->assert_cmp_deeply([$email1Id], $res->[3][1]{ids});
+    $self->assert_cmp_deeply([$email1Id], $res->[4][1]{ids});
+    $self->assert_cmp_deeply([$email1Id], $res->[5][1]{ids});
+}

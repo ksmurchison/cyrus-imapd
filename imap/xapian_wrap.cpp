@@ -79,8 +79,9 @@ static void make_cyrusid(struct buf *dst, const struct message_guid *guid, char 
  * Version 15: receives indexed header fields and text in original format (rather than search form)
  * Version 16: indexes entire addr-spec as a single value.  Prevents cross-matching localparts and domains
  * Version 17: normalizes text using libicu's NFKC with CaseFolding. Default stemmer keeps using lowercase Cyrus Search Form.
+ * Version 18: uses new search parts CALORGANIZER, CALATTENDEE, CALSUMMARY and CALDESCRIPTION to index calendar event ORGANIZER, ATTENDEE, SUMMARY, DESCRIPTION. Before, these were indexed as FROM, TO, SUBJECT and BODY search parts.
  */
-#define XAPIAN_DB_CURRENT_VERSION 17
+#define XAPIAN_DB_CURRENT_VERSION 18
 #define XAPIAN_DB_MIN_SUPPORTED_VERSION 5
 
 static std::set<int> read_db_versions(const Xapian::Database &database)
@@ -621,6 +622,10 @@ static std::string get_term_prefix(enum search_part partnum)
         "XMM",               /* MESSAGEID */
         "XMR",               /* REFERENCES */
         "XMI",               /* INREPLYTO */
+        "XCO",               /* CALORGANIZER */
+        "XCA",               /* CALATTENDEE */
+        "XCS",               /* CALSUMMARY */
+        "XCD",               /* CALDESCRIPTION */
     };
 
     return term_prefixes[partnum];
@@ -649,6 +654,10 @@ static Xapian::TermGenerator::stem_strategy get_stem_strategy(enum search_part p
         Xapian::TermGenerator::STEM_NONE,  /* MESSAGEID */
         Xapian::TermGenerator::STEM_NONE,  /* REFERENCES */
         Xapian::TermGenerator::STEM_NONE,  /* INREPLYTO */
+        Xapian::TermGenerator::STEM_NONE,  /* CALORGANIZER */
+        Xapian::TermGenerator::STEM_NONE,  /* CALATTENDEE */
+        Xapian::TermGenerator::STEM_SOME,  /* CALSUMMARY */
+        Xapian::TermGenerator::STEM_SOME,  /* CALDESCRIPTION */
     };
 
     return stem_strategy[partnum];
@@ -1236,6 +1245,8 @@ EXPORTED int xapian_dbw_doc_part(xapian_dbw_t *dbw,
             case SEARCH_PART_CC:
             case SEARCH_PART_BCC:
             case SEARCH_PART_DELIVEREDTO:
+            case SEARCH_PART_CALORGANIZER:
+            case SEARCH_PART_CALATTENDEE:
                 r = add_email_part(dbw, part, partnum);
                 break;
             case SEARCH_PART_TYPE:
@@ -2253,6 +2264,23 @@ static Xapian::Query *xapian_query_new_match_internal(const xapian_db_t *db,
                  partnum == SEARCH_PART_DELIVEREDTO) {
             q = query_new_email(db, partnum, mystr);
         }
+        else if (partnum == SEARCH_PART_CALORGANIZER ||
+                 partnum == SEARCH_PART_CALATTENDEE) {
+            q = query_new_email(db, partnum, mystr);
+            if (q && xapian_db_has_version_lower_than(db, 18)) {
+                // Versions <= 17 indexed iCalendar ORGANIZER
+                // and ATTENDEE as FROM and TO search parts.
+                Xapian::Query *qq = query_new_email(
+                    db,
+                    partnum == SEARCH_PART_CALORGANIZER ? SEARCH_PART_FROM
+                                                        : SEARCH_PART_TO,
+                    mystr);
+                if (qq) {
+                    *q |= *qq;
+                    delete qq;
+                }
+            }
+        }
         else if (partnum == SEARCH_PART_TYPE) {
             q = query_new_type(db, partnum, mystr);
         }
@@ -2260,6 +2288,23 @@ static Xapian::Query *xapian_query_new_match_internal(const xapian_db_t *db,
                 partnum == SEARCH_PART_MESSAGEID ||
                 partnum == SEARCH_PART_REFERENCES) {
             q = query_new_messageid(db, partnum, mystr);
+        }
+        else if (partnum == SEARCH_PART_CALSUMMARY ||
+                 partnum == SEARCH_PART_CALDESCRIPTION) {
+            q = query_new_textmatch(db, partnum, mystr);
+            if (q && xapian_db_has_version_lower_than(db, 18)) {
+                // Versions <= 17 indexed iCalendar SUMMARY
+                // and DESCRIPTION as SUBJECT and BODY search parts.
+                Xapian::Query *qq = query_new_textmatch(
+                    db,
+                    partnum == SEARCH_PART_CALSUMMARY ? SEARCH_PART_SUBJECT
+                                                      : SEARCH_PART_BODY,
+                    mystr);
+                if (qq) {
+                    *q |= *qq;
+                    delete qq;
+                }
+            }
         }
         else {
             q = query_new_textmatch(db, partnum, mystr);

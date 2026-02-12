@@ -6797,26 +6797,26 @@ static search_expr_t *eventquery_textsearch_build(jmap_req_t *req,
 
         if ((s = json_string_value(json_object_get(filter, "text")))) {
             e = search_expr_new(this, SEOP_OR);
-            eventquery_textsearch_match(e, s, "body");
-            eventquery_textsearch_match(e, s, "subject");
-            eventquery_textsearch_match(e, s, "from");
-            eventquery_textsearch_match(e, s, "to");
+            eventquery_textsearch_match(e, s, "caldescription");
+            eventquery_textsearch_match(e, s, "calsummary");
+            eventquery_textsearch_match(e, s, "calorganizer");
+            eventquery_textsearch_match(e, s, "calattendee");
             eventquery_textsearch_match(e, s, "location");
         }
         if ((s = json_string_value(json_object_get(filter, "title")))) {
-            eventquery_textsearch_match(this, s, "subject");
+            eventquery_textsearch_match(this, s, "calsummary");
         }
         if ((s = json_string_value(json_object_get(filter, "description")))) {
-            eventquery_textsearch_match(this, s, "body");
+            eventquery_textsearch_match(this, s, "caldescription");
         }
         if ((s = json_string_value(json_object_get(filter, "location")))) {
             eventquery_textsearch_match(this, s, "location");
         }
         if ((s = json_string_value(json_object_get(filter, "owner")))) {
-            eventquery_textsearch_match(this, s, "from");
+            eventquery_textsearch_match(this, s, "calorganizer");
         }
         if ((s = json_string_value(json_object_get(filter, "attendee")))) {
-            eventquery_textsearch_match(this, s, "to");
+            eventquery_textsearch_match(this, s, "calattendee");
         }
     }
 
