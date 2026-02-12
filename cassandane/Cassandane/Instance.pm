@@ -83,7 +83,7 @@ use Cassandane::Cassini;
 use Cassandane::PortManager;
 use Cassandane::BuildInfo;
 
-use lib '../perl/imap';
+use lib '../perl/imap/lib';
 require Cyrus::DList;
 
 my $__cached_rootdir;

@@ -50,7 +50,7 @@ use base qw(Cassandane::Cyrus::TestCase);
 use Cassandane::Util::Log;
 use Cassandane::Instance;
 
-use lib '../perl/imap';
+use lib '../perl/imap/lib';
 use Cyrus::DList;
 use Cyrus::HeaderFile;
 use Cyrus::IndexFile;

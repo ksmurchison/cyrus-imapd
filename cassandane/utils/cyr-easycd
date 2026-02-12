@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use lib 'perl/imap';
+use lib 'perl/imap/lib';
 
 use feature 'signatures';
 
