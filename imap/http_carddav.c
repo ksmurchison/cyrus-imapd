@@ -691,24 +691,44 @@ static int carddav_store_resource(struct transaction_t *txn,
 
 static unsigned check_uid_conflict(struct transaction_t *txn,
                                    struct mailbox *mailbox,
-                                   const char *resource, const char *uid,
+                                   const char *resource,
+                                   const char *uid,
+                                   vcardproperty_version version,
                                    struct carddav_db *db)
 {
     unsigned precond = 0;
     struct carddav_data *cdata;
 
-    /* Check for changed UID */
-    carddav_lookup_resource(db, mailbox_mbentry(mailbox), resource, &cdata, 0);
-    
-    if (cdata->dav.imap_uid && strcmpsafe(cdata->vcard_uid, uid)) {
+    /* Check for duplicate vCard UID in addressbook */
+    carddav_lookup_uid(db, mailbox_mbentry(mailbox), uid, &cdata);
+
+    if (cdata->dav.imap_uid && strcmp(cdata->dav.resource, resource)) {
         precond = CARDDAV_UID_CONFLICT;
     }
-    else {
-        /* Check for duplicate vCard UID in addressbook */
-        carddav_lookup_uid(db, mailbox_mbentry(mailbox), uid, &cdata);
 
-        if (cdata->dav.imap_uid && strcmp(cdata->dav.resource, resource)) {
+    if (!precond) {
+        /* Check for changed UID */
+        carddav_lookup_resource(db, mailbox_mbentry(mailbox), resource, &cdata, 0);
+
+        if (cdata->dav.imap_uid && strcmpsafe(cdata->vcard_uid, uid)) {
             precond = CARDDAV_UID_CONFLICT;
+
+            if (txn->meth == METH_PUT && uid && cdata->vcard_uid &&
+                cdata->version == 3 && version == VCARD_VERSION_40 &&
+                ((!strncasecmp(uid, "urn:uuid:", 9) &&
+                  !strcmp(uid + 9, cdata->vcard_uid)) ||
+                 (!strncasecmp(cdata->vcard_uid, "urn:uuid:", 9) &&
+                  !strcmp(cdata->vcard_uid + 9, uid)))) {
+                // XXX quirk
+                // This is a PUT on the same resource which rewrites a version 3
+                // vCard to version 4 and adds or strips the "urn:uuid" prefix
+                // from the UID value of the card.
+                // Strictly speaking, this is not allowed and would require us
+                // to reject this with a no-uid-conflict precondition error.
+                // But we know that eMClient adds the prefix and DavX5 strips it,
+                // so let's allow this until they changed their code.
+                precond = 0;
+            }
         }
     }
 
@@ -744,8 +764,10 @@ static int carddav_copy(struct transaction_t *txn, void *obj,
     struct carddav_db *db = (struct carddav_db *)destdb;
     vcardcomponent *vcard = (vcardcomponent *)obj;
     const char *uid = vcardcomponent_get_uid(vcard);
+    vcardproperty_version vcard_version = vcardcomponent_get_version(vcard);
 
-    txn->error.precond = check_uid_conflict(txn, mailbox, resource, uid, db);
+    txn->error.precond =
+        check_uid_conflict(txn, mailbox, resource, uid, vcard_version, db);
     if (txn->error.precond) return HTTP_FORBIDDEN;
 
     return carddav_store_resource(txn, vcard, mailbox, resource, db);
@@ -1510,30 +1532,9 @@ static int carddav_put(struct transaction_t *txn, void *obj,
         goto done;
     }
 
-    /* Check for changed UID */
-    struct carddav_data *cdata;
-    carddav_lookup_resource(db, txn->req_tgt.mbentry, resource, &cdata, 0);
-
-    const char *olduid = cdata->vcard_uid;
-    const char *newuid = uid;
-    if (cdata->dav.imap_uid && olduid && newuid
-        && cdata->version == 3 && !strcmpsafe(card_ver, "4.0")
-        && !strncasecmp(newuid, "urn:uuid:", 9)
-        && !strcmp(olduid, newuid + 9))
-    {
-        // XXX quirk
-        // This is a PUT that rewrites a version 3 vCard to version 4
-        // and prefixes the UID value of the former card with the
-        // verbatim string "urn:uuid". Strictly speaking, this is not
-        // allowed and would require us to reject this with a
-        // no-uid-conflict precondition error. But previous versions
-        // of Cyrus did allow to do so and there is at least one client
-        // (eMClient) that does these bogus rewrites, so let's allow
-        // this case until they got a chance to fix their code.
-    }
-    else {
-        txn->error.precond = check_uid_conflict(txn, mailbox, resource, uid, db);
-    }
+    /* Check for UID conflict */
+    txn->error.precond = check_uid_conflict(txn, mailbox, resource, uid,
+            vcardcomponent_get_version(vcard), db);
 
   done:
     param_free(&params);
