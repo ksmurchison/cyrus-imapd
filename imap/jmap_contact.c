@@ -7447,21 +7447,47 @@ static void jsprop_from_vcard(vcardproperty *prop, json_t *obj,
         if (param) {
             vcardstrarray *sorts = vcardparameter_get_sortas(param);
             json_t *sortas = json_object();
-            const struct comp_kind *ckind;
 
-            for (ckind = n_comp_kinds; ckind->name; ckind++) {
-                if (ckind->idx < vcardstrarray_size(sorts)) {
-                    const char *val =
-                        vcardstrarray_element_at(sorts, ckind->idx);
+            if (vcardstrarray_size(sorts) <= n->num_fields) {
+                const struct comp_kind *ckind;
+                for (ckind = n_comp_kinds; ckind->name; ckind++) {
+                    if (ckind->idx < vcardstrarray_size(sorts)) {
+                        const char *val =
+                            vcardstrarray_element_at(sorts, ckind->idx);
 
-                    if (*val) {
+                        if (!*val) continue;
+
+                        // Sanity-check the SORT-AS parameter:
+                        // If it sets a component to sort by, then that
+                        // component must also be set in the N property.
+                        bool have_ncomp = false;
+
+                        if (ckind->idx < n->num_fields) {
+                            vcardstrarray *ncomp = n->field[ckind->idx];
+                            const char *nval = vcardstrarray_element_at(ncomp, 0);
+                            if (nval && *nval) {
+                                have_ncomp = true;
+                            }
+                        }
+
+                        if (!have_ncomp) {
+                            // Bogus SORT-AS parameter. Ignore it.
+                            json_decref(sortas);
+                            sortas = NULL;
+                            break;
+                        }
+
                         json_object_set_new(sortas,
                                             ckind->name, jmap_utf8string(val));
                     }
                 }
             }
 
-            json_object_set_new(jprop, "sortAs", sortas);
+            if (json_object_size(sortas)) {
+                json_object_set(jprop, "sortAs", sortas);
+            }
+
+            json_decref(sortas);
 
             /* Remove SORT-AS parameter */
             vcardproperty_remove_parameter_by_ref(prop, param);
