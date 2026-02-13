@@ -779,6 +779,21 @@ static void cyr_vcardcomponent_transform(vcardcomponent *vcard,
 {
     vcardcomponent_transform(vcard, want_ver);
 
+    if (want_ver == VCARD_VERSION_30) {
+        // N property is mandatory in vCard version 3.
+        // XXX this should be covered by libical 4.0
+        if (!vcardcomponent_get_first_property(vcard, VCARD_N_PROPERTY)) {
+            vcardstructuredtype st = { 5, { 0 } };  // 5 empty components
+            vcardcomponent_add_property(vcard, vcardproperty_new_n(&st));
+        }
+    }
+
+    // FN property is mandatory in both vCard version 3 and 4.
+    // XXX this should be covered by libical 4.0
+    if (!vcardcomponent_get_first_property(vcard, VCARD_FN_PROPERTY)) {
+        vcardcomponent_add_property(vcard, vcardproperty_new_fn(""));
+    }
+
     if (want_ver == VCARD_VERSION_40 &&
         ua && !strncmp(ua[0], DAVX5_UA_STR, DAVX5_UA_STR_LEN)) {
         /* XXX quirk
