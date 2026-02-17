@@ -380,8 +380,11 @@ static json_t *jmap_group_from_vcard(struct vparse_card *vcard)
             json_object_set_new(obj, "name", jmap_utf8string(propval));
         }
 
-        else if (!strcasecmp(name, "member") ||
-                 !strcasecmp(name, "x-addressbookserver-member")) {
+        else if (!strcasecmp(name, "member")) {
+            json_object_set_new(contactids_set, propval, json_true());
+        }
+
+        else if (!strcasecmp(name, "x-addressbookserver-member")) {
             if (strncmp(propval, "urn:uuid:", 9)) continue;
             json_object_set_new(contactids_set, propval+9, json_true());
         }
@@ -975,8 +978,12 @@ static int _add_group_entries(struct jmap_req *req,
     int r = 0;
     size_t index;
     struct buf buf = BUF_INITIALIZER;
+    int is_v4 = 0;
 
-    if (ventry && atof(ventry->v.value) >= 4.0) group_propname =  "MEMBER";
+    if (ventry && atof(ventry->v.value) >= 4.0) {
+        is_v4 = 1;
+        group_propname =  "MEMBER";
+    }
 
     vparse_delete_entries(card, NULL, group_propname);
 
@@ -991,7 +998,7 @@ static int _add_group_entries(struct jmap_req *req,
         }
 
         buf_reset(&buf);
-        if (strncmpsafe("urn:uuid:", uid, 9)) {
+        if (!is_v4 && strncmpsafe("urn:uuid:", uid, 9)) {
             buf_setcstr(&buf, "urn:uuid:");
         }
 
@@ -12609,6 +12616,11 @@ static int _card_set_update(jmap_req_t *req, bool apply_empty_updates,
     }
 
     if (num_props) {
+        /* Always work with a v4 card so we have "clean" MEMBER properties */
+        if (cdata->version == 3) {
+            vcardcomponent_transform(vcard, VCARD_VERSION_40);
+        }
+
         /* Convert the vCard to a JSContact Card. */
         json_t *old_obj = jmap_card_from_vcard(req->userid, vcard,
                                                db, *mailbox, &record,
