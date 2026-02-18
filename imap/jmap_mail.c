@@ -9512,8 +9512,8 @@ static json_t *_header_make(const char *header_name,
             i += 2;
             continue;
         }
-        // Reject any other control character
-        if (iscntrl(val[i]))
+        // Reject any control character other than TAB.
+        if (val[i] != '\t' && iscntrl(val[i]))
             break;
     }
     is_valid = i == buf_len(hdr);
