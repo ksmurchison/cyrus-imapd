@@ -5208,6 +5208,10 @@ static int getaddressbooks_cb(const mbentry_t *mbentry, void *vrock)
         json_object_set_new(obj, "shareWith", sharewith);
     }
 
+    if (jmap_wantprop(rock->get->props, "mailboxUniqueId")) {
+        json_object_set_new(obj, "mailboxUniqueId", json_string(mbentry->uniqueid));
+    }
+
     json_array_append_new(rock->get->list, obj);
 
     buf_free(&attrib);
@@ -5258,6 +5262,11 @@ static const jmap_property_t addressbook_props[] = {
     },
 
     /* FM extensions (do ALL of these get through to Cyrus?) */
+    {
+        "mailboxUniqueId",
+        JMAP_CONTACTS_EXTENSION,
+        JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE
+    },
     {
         "cyrusimap.org:href",
         JMAP_CONTACTS_EXTENSION,
@@ -5906,6 +5915,8 @@ static void setaddressbooks_create(struct jmap_req *req,
     jmap_add_id(req, creation_id, id);
 
     if (jmap_is_using(req, JMAP_CONTACTS_EXTENSION)) {
+        json_object_set_new(*record, "mailboxUniqueId",
+                        json_string(newmbentry->uniqueid));
         char *xhref = jmap_xhref(mboxname, NULL);
         json_object_set_new(*record, "cyrusimap.org:href", json_string(xhref));
         free(xhref);
