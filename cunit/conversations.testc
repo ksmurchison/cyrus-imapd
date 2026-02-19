@@ -1385,6 +1385,7 @@ static void test_subject_normalise(void)
              "foobar");
     TESTCASE("no re: foobar", "nore:foobar");
     TESTCASE("re: no re: foobar", "nore:foobar");
+    TESTCASE("\nfoo\rbar \tbaz ", "foobarbaz");
 }
 
 #undef TESTCASE
