@@ -38,7 +38,6 @@
 #define JMAP_URN_CALENDAR_PREFERENCES "urn:ietf:params:jmap:calendars:preferences"
 
 #define JMAP_CORE_EXTENSION          "https://cyrusimap.org/ns/jmap/core"
-#define JMAP_BLOB_EXTENSION          "https://cyrusimap.org/ns/jmap/blob"
 #define JMAP_CONTACTS_EXTENSION      "https://cyrusimap.org/ns/jmap/contacts"
 #define JMAP_CALENDARS_EXTENSION     "https://cyrusimap.org/ns/jmap/calendars"
 #define JMAP_MAIL_EXTENSION          "https://cyrusimap.org/ns/jmap/mail"

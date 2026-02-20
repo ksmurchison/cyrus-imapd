@@ -109,7 +109,7 @@ sub set_up
         'urn:ietf:params:jmap:mail',
         'urn:ietf:params:jmap:sieve',
         'https://cyrusimap.org/ns/jmap/sieve',  # for SieveScript/test
-        'https://cyrusimap.org/ns/jmap/blob',
+        'urn:ietf:params:jmap:blob',
     ]);
 }
 

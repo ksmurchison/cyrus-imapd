@@ -126,7 +126,7 @@ sub set_up
         'urn:ietf:params:jmap:vacationresponse',
         'urn:ietf:params:jmap:contacts',
         'https://cyrusimap.org/ns/jmap/backup',
-        'https://cyrusimap.org/ns/jmap/blob',
+        'urn:ietf:params:jmap:blob',
         'https://cyrusimap.org/ns/jmap/contacts',
         'https://cyrusimap.org/ns/jmap/notes',
         'https://cyrusimap.org/ns/jmap/debug',

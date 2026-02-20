@@ -185,7 +185,7 @@ sub default_using {
         urn:ietf:params:jmap:core
         urn:ietf:params:jmap:mail
         urn:ietf:params:jmap:submission
-        https://cyrusimap.org/ns/jmap/blob
+        urn:ietf:params:jmap:blob
         urn:ietf:params:jmap:calendars
         https://cyrusimap.org/ns/jmap/contacts
         https://cyrusimap.org/ns/jmap/calendars
