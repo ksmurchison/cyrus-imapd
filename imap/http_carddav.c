@@ -798,9 +798,9 @@ static void cyr_vcardcomponent_transform(vcardcomponent *vcard,
                 fullname = vcardproperty_get_value_as_string(fn);
             }
 
-            vcardstructuredtype *st = vcardstructured_from_string(fullname);
+            vcardstructuredtype *st = vcardstructured_new_from_string(fullname);
             vcardcomponent_add_property(vcard, vcardproperty_new_n(st));
-            free(st);
+            vcardstructured_unref(st);
         }
     }
 
@@ -1474,8 +1474,9 @@ static int carddav_put(struct transaction_t *txn, void *obj,
         vcardcomponent_get_first_property(vcard, VCARD_FN_PROPERTY);
 
     if (!n && version < VCARD_VERSION_40) {
-        vcardstructuredtype st = { 5, { 0 } };  // 5 empty components
-        vcardcomponent_add_property(vcard, vcardproperty_new_n(&st));
+        vcardstructuredtype *st = vcardstructured_new(5);  // 5 empty components
+        vcardcomponent_add_property(vcard, vcardproperty_new_n(st));
+        vcardstructured_unref(st);
     }
     else if (!fn) {
         vcardcomponent_add_property(vcard, vcardproperty_new_fn(""));
