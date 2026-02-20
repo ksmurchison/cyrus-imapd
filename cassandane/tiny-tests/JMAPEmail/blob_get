@@ -30,11 +30,11 @@ sub test_blob_get
     $jmap->DefaultUsing(\@using);
 
     $res = $jmap->CallMethods([
-        ['Blob/lookup', { ids => [$blobId], types => ['Mailbox', 'Thread', 'Email']}, "R1"],
+        ['Blob/lookup', { ids => [$blobId], typeNames => ['Mailbox', 'Thread', 'Email']}, "R1"],
     ]);
 
     my $blob = $res->[0][1]{list}[0];
-    $self->assert_deep_equals($wantMailboxIds, $blob->{types}{Mailbox});
-    $self->assert_deep_equals($wantEmailIds, $blob->{types}{Email});
-    $self->assert_deep_equals($wantThreadIds, $blob->{types}{Thread});
+    $self->assert_deep_equals($wantMailboxIds, $blob->{matchedIds}{Mailbox});
+    $self->assert_deep_equals($wantEmailIds, $blob->{matchedIds}{Email});
+    $self->assert_deep_equals($wantThreadIds, $blob->{matchedIds}{Thread});
 }
