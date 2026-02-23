@@ -6514,6 +6514,9 @@ static void _unmapped_param(json_t *obj,
     if (param_kind == VCARD_IANA_PARAMETER) {
         buf_setcstr(&buf, vcardparameter_get_iana_name(param));
     }
+    else if (param_kind == VCARD_X_PARAMETER) {
+        buf_setcstr(&buf, vcardparameter_get_xname(param));
+    }
     else {
         buf_setcstr(&buf, vcardparameter_kind_to_string(param_kind));
     }
@@ -7944,7 +7947,10 @@ static void jsprop_from_vcard(vcardproperty *prop, json_t *obj,
             char *param_str = vcardparameter_as_vcard_string(param);
             char *param_value = strchr(param_str, '=') + 1;
 
-            buf_setcstr(crock->buf, vcardparameter_kind_to_string(param_kind));
+            if (param_kind == VCARD_X_PARAMETER) 
+                buf_setcstr(crock->buf, vcardparameter_get_xname(param));
+            else
+                buf_setcstr(crock->buf, vcardparameter_kind_to_string(param_kind));
 
             if (param_kind == VCARD_VALUE_PARAMETER) {
                 type = lcase(param_value);
@@ -9645,6 +9651,7 @@ static void _vcardparams_to_prop(json_t *jparams, vcardproperty *prop)
 {
     const char *name;
     json_t *jval;
+    struct buf buf = BUF_INITIALIZER;
 
     json_object_foreach(jparams, name, jval) {
         vcardparameter *param;
@@ -9660,7 +9667,8 @@ static void _vcardparams_to_prop(json_t *jparams, vcardproperty *prop)
         case VCARD_NO_PARAMETER:
         case VCARD_IANA_PARAMETER:
             param = vcardparameter_new(VCARD_IANA_PARAMETER);
-            vcardparameter_set_iana_name(param, name);
+            buf_setcstr(&buf, name);
+            vcardparameter_set_iana_name(param, buf_ucase(&buf));
             break;
 
         default:
@@ -9686,6 +9694,8 @@ static void _vcardparams_to_prop(json_t *jparams, vcardproperty *prop)
 
         vcardproperty_add_parameter(prop, param);
     }
+
+    buf_free(&buf);
 }
 
 static unsigned _jsobject_to_card(struct jmap_parser *parser, json_t *obj,
@@ -12820,7 +12830,7 @@ static json_t *_card_from_record(jmap_req_t *req,
     if (!vcard) return NULL;
 
     json_t *jcard = jmap_card_from_vcard(req->userid, vcard, db, mailbox, record,
-                                         IGNORE_VCARD_VERSION);
+                                         IGNORE_VCARD_VERSION | SET_VCARD_CONVPROPS);
     vcardcomponent_free(vcard);
 
     if (jcard && strstr(req->method, "/copy")) {
