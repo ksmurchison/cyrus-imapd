@@ -12020,6 +12020,7 @@ static int _jscard_to_vcard(struct jmap_req *req,
         /* Address and Location properties */
         else if (!strcmp(mykey, "addresses")) {
             struct param_prop_t addr_props[] = {
+                { "label",       VCARD_X_PARAMETER     },
                 { "pref",        VCARD_PREF_PARAMETER  },
                 { "contexts",    VCARD_TYPE_PARAMETER  },
                 { "timeZone",    VCARD_TZ_PARAMETER    },
