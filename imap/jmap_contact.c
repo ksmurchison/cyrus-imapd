@@ -12819,17 +12819,22 @@ static json_t *_card_from_record(jmap_req_t *req,
 
     if (!vcard) return NULL;
 
-    /* Patch JMAP event */
     json_t *jcard = jmap_card_from_vcard(req->userid, vcard, db, mailbox, record,
                                          IGNORE_VCARD_VERSION);
     vcardcomponent_free(vcard);
 
     if (jcard && strstr(req->method, "/copy")) {
-        json_t *media = json_object_get(jcard, "media");
-        if (media) {
-            /* _blob_to_card() needs to know in which account to find blobs */
-            json_object_set(media, "accountId",
-                            json_object_get(req->args, "fromAccountId"));
+        /* jsresource_to_vcard() needs to know in which account to find blobs */
+        static const char *types_with_blobid[] = { "media", "cryptoKeys", NULL };
+        json_t *fromAccountId = json_object_get(req->args, "fromAccountId");
+
+        for (const char **type = types_with_blobid; *type; type++) {
+            const char *key;
+            json_t *jval;
+
+            json_object_foreach(json_object_get(jcard, *type), key, jval) {
+                json_object_set(jval, "accountId", fromAccountId);
+            }
         }
 
         // immutable and WILL change
