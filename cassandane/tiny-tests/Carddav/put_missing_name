@@ -30,11 +30,8 @@ EOF
     xlog $self, "PUT vCard v3 with missing N";
     $card =~ s/END:/FN:Forest Gump\r\nEND:/;
 
-    $res = $CardDAV->{ua}->request('PUT', $CardDAV->request_url($href), {
-        content => $card,
-        headers => \%Headers,
-    });
-    $self->assert_num_equals(201, $res->{status});
+    $res = $CardDAV->Request('PUT', $href, $card,
+                             'Content-Type' => 'text/vcard');
 
     xlog $self, "GET as vCard v3";
     $res = $CardDAV->Request('GET', $href, '',
@@ -46,15 +43,31 @@ EOF
     $card =~ s/3.0/4.0/;
     $card =~ s/FN:Forest Gump/N:Gump;Forrest;;Mr./;
 
-    $res = $CardDAV->{ua}->request('PUT', $CardDAV->request_url($href), {
-        content => $card,
-        headers => \%Headers,
-    });
-    $self->assert_num_equals(204, $res->{status});
+    $res = $CardDAV->Request('PUT', $href, $card,
+                             'Content-Type' => 'text/vcard');
 
     xlog $self, "GET as vCard v4";
     $res = $CardDAV->Request('GET', $href, '',
                              'Accept' => 'text/vcard; version=4.0');
     $newcard = $res->{content};
     $self->assert_matches(qr/FN:\r\n/, $newcard);
+
+    xlog $self, "PUT vCard v4 group with missing N";
+    $card = <<EOF;
+BEGIN:VCARD
+VERSION:4.0
+UID:xyz
+FN:My\;Group
+KIND:group
+END:VCARD
+EOF
+
+    $res = $CardDAV->Request('PUT', $href, $card,
+                             'Content-Type' => 'text/vcard');
+
+    xlog $self, "GET as vCard v3";
+    $res = $CardDAV->Request('GET', $href, '',
+                             'Accept' => 'text/vcard; version=3.0');
+    $newcard = $res->{content};
+    $self->assert_matches(qr/\r\nN:My\\;Group\r\n/, $newcard);
 }

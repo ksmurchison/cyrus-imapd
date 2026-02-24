@@ -777,20 +777,36 @@ static void cyr_vcardcomponent_transform(vcardcomponent *vcard,
                                          vcardproperty_version want_ver,
                                          const char **ua)
 {
+    vcardproperty_kindenum ckind = VCARD_KIND_NONE;
+    vcardproperty *fn =
+        vcardcomponent_get_first_property(vcard, VCARD_FN_PROPERTY);
+    vcardproperty *kindp =
+        vcardcomponent_get_first_property(vcard, VCARD_KIND_PROPERTY);
+
+    if (kindp) ckind = vcardproperty_get_kind(kindp);
+
     vcardcomponent_transform(vcard, want_ver);
 
     if (want_ver == VCARD_VERSION_30) {
         // N property is mandatory in vCard version 3.
         // XXX this should be covered by libical 4.0
         if (!vcardcomponent_get_first_property(vcard, VCARD_N_PROPERTY)) {
-            vcardstructuredtype st = { 5, { 0 } };  // 5 empty components
-            vcardcomponent_add_property(vcard, vcardproperty_new_n(&st));
+            const char *fullname = ";;;;";  // 5 empty components
+
+            if (fn && (ckind == VCARD_KIND_GROUP)) {
+                // Apple groups need surname component of N == FN
+                fullname = vcardproperty_get_value_as_string(fn);
+            }
+
+            vcardstructuredtype *st = vcardstructured_from_string(fullname);
+            vcardcomponent_add_property(vcard, vcardproperty_new_n(st));
+            free(st);
         }
     }
 
     // FN property is mandatory in both vCard version 3 and 4.
     // XXX this should be covered by libical 4.0
-    if (!vcardcomponent_get_first_property(vcard, VCARD_FN_PROPERTY)) {
+    if (!fn) {
         vcardcomponent_add_property(vcard, vcardproperty_new_fn(""));
     }
 
@@ -1451,12 +1467,13 @@ static int carddav_put(struct transaction_t *txn, void *obj,
     }
 
     /* If we are missing N or FN, add an empty one */
+    vcardproperty_version version = vcardcomponent_get_version(vcard);
     vcardproperty *n =
         vcardcomponent_get_first_property(vcard, VCARD_N_PROPERTY);
     vcardproperty *fn =
         vcardcomponent_get_first_property(vcard, VCARD_FN_PROPERTY);
 
-    if (!n) {
+    if (!n && version < VCARD_VERSION_40) {
         vcardstructuredtype st = { 5, { 0 } };  // 5 empty components
         vcardcomponent_add_property(vcard, vcardproperty_new_n(&st));
     }
