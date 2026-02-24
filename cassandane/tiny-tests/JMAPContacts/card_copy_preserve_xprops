@@ -1,0 +1,96 @@
+#!perl
+use Cassandane::Tiny;
+
+sub test_card_copy_preserve_xprops
+    ($self)
+{
+    my $jmap      = $self->{jmap};
+    my $carddav   = $self->{carddav};
+    my $admintalk = $self->{adminstore}->get_client();
+    my $service   = $self->{instance}->get_service("http");
+
+    xlog $self, "create shared account";
+    $admintalk->create("user.other");
+    my $other_user = $self->{instance}->create_user_without_setup('other');
+
+    my $otherCarddav = $other_user->carddav;
+    my $otherJmap = $other_user->jmap;
+
+    $otherJmap->DefaultUsing([
+        'urn:ietf:params:jmap:core',
+        'urn:ietf:params:jmap:contacts',
+        'https://cyrusimap.org/ns/jmap/contacts',
+        'https://cyrusimap.org/ns/jmap/debug'
+    ]);
+
+    xlog $self, "share addressbook";
+    $admintalk->setacl(
+        "user.other.#addressbooks.Default",
+        "cassandane" => 'lrswipkxtecdn'
+    ) or die;
+
+    my $card = decode(
+        'utf-8', <<EOF
+BEGIN:VCARD
+VERSION:3.0
+UID:0A8F88DE-1073-4D47-926F-0D535523FD15
+N:Smith;Hank;;
+FN:Hank Smith
+X-FOO;X-BAZ=Bam:Bar
+X-PHONETIC-FIRST-NAME:phoneticFirst
+X-PHONETIC-LAST-NAME:phoneticLast
+REV:2008-04-24T19:52:43Z
+END:VCARD
+EOF
+    );
+    $card =~ s/\r?\n/\r\n/gs;
+    $carddav->Request('PUT', 'Default/test.vcf', $card,
+                      'Content-Type' => 'text/vcard');
+
+    my $res = $jmap->CallMethods([
+        [ 'ContactCard/query', {}, 'R1' ],
+    ]);
+    $self->assert_num_equals(1, scalar @{ $res->[0][1]{ids} });
+    my $contactId = $res->[0][1]{ids}[0];
+    $self->assert_not_null($contactId);
+
+    $res = $jmap->CallMethods([
+        [
+            'ContactCard/copy',
+            {
+                fromAccountId => 'cassandane',
+                accountId     => 'other',
+                create        => {
+                    contact1 => {
+                        addressBookIds => { 'Default' => JSON::true },
+                        id             => $contactId
+                    }
+                },
+                onSuccessDestroyOriginal => JSON::false,
+            },
+            'R1'
+        ],
+    ]);
+    my $copiedContactId = $res->[0][1]{created}{contact1}{id};
+    $self->assert_not_null($copiedContactId);
+
+    $res = $otherJmap->CallMethods([
+        [
+            'ContactCard/get',
+            {
+                accountId  => 'other',
+                ids        => [$copiedContactId],
+                properties => [ 'cyrusimap.org:href' ],
+            },
+            'R1'
+        ],
+    ]);
+
+    $card = $otherCarddav->Request('GET',
+                                   $res->[0][1]{list}[0]{'cyrusimap.org:href'});
+    $self->assert_matches(qr/^X-FOO;X-BAZ=Bam:Bar\r$/m, $card->{content});
+    $self->assert_matches(qr/^X-PHONETIC-FIRST-NAME:phoneticFirst\r$/m,
+                          $card->{content});
+    $self->assert_matches(qr/^X-PHONETIC-LAST-NAME:phoneticLast\r$/m,
+                          $card->{content});
+}
