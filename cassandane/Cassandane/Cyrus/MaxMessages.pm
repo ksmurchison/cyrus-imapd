@@ -174,7 +174,7 @@ sub put_script
         'urn:ietf:params:jmap:core',
         'urn:ietf:params:jmap:mail',
         'https://cyrusimap.org/ns/jmap/sieve',
-        'https://cyrusimap.org/ns/jmap/blob',
+        'urn:ietf:params:jmap:blob',
     ]);
 
     my $res = $self->{jmap}->CallMethods([
