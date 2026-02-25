@@ -1,0 +1,44 @@
+#!perl
+use Cassandane::Tiny;
+
+# Ensure that we don't crash if we attempt to update a contact that exists
+# in an addressbook that we can't see in an account we can see.
+sub test_card_set_update_noaccess
+    ($self)
+{
+    my $user = $self->default_user;
+    my $ouser = $self->{instance}->create_user('other');
+
+    my $shared = $ouser->addressbooks->create;
+    $shared->share_with($user => [ 'mayWrite', 'mayRead' ]);
+
+    my $private = $ouser->addressbooks->create;
+
+    my $contact = $private->create_card;
+    my $scontact = $shared->create_card;
+
+    my $res = $user->jmap->request([[
+        "ContactCard/set" => {
+            accountId => 'other',
+            update => { 
+                # We can update this one
+                $scontact->id => { name => { full => "plate" }, },
+
+                # We can't update this one because we can't even see it
+                $contact->id => {'cyrusimap.org:href' => "cat", },
+            },
+        },
+    ]])->single_sentence("ContactCard/set")->arguments;
+
+    $self->assert_cmp_deeply(
+        superhashof({
+            updated => {
+                $scontact->id => ignore()
+            },
+            notUpdated => {
+                $contact->id => { type => 'notFound' }
+            },
+        }),
+        $res
+    );
+}

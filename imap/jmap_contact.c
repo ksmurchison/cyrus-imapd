@@ -12561,7 +12561,7 @@ static int _card_set_update(jmap_req_t *req, bool apply_empty_updates,
     int needrights = required_set_rights(jcard);
 
     int rights = mbentry ? jmap_myrights_mbentry(req, mbentry) : 0;
-    if ((rights & needrights) != needrights) {
+    if (!mbentry || (rights & needrights) != needrights) {
         r = (rights & JACL_READITEMS) ? HTTP_NOT_ALLOWED : HTTP_NOT_FOUND;
         goto done;
     }
