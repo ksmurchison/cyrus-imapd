@@ -18,6 +18,8 @@
 #include "imap/http_err.h"
 #include "imap/imap_err.h"
 #include "imap/jmap_err.h"
+#include "imap/jmap_blob_props.h"
+#include "imap/jmap_blob_upload_props.h"
 
 
 static int jmap_blob_copy(jmap_req_t *req);
@@ -57,6 +59,9 @@ static jmap_method_t jmap_blob_methods_standard[] = {
 };
 // clang-format on
 
+static jmap_property_set_t blob_props        = JMAP_PROPERTY_SET_INITIALIZER;
+static jmap_property_set_t blob_upload_props = JMAP_PROPERTY_SET_INITIALIZER;
+
 static json_t *blob_capabilities = NULL;
 
 HIDDEN void jmap_blob_init(jmap_settings_t *settings)
@@ -87,6 +92,10 @@ HIDDEN void jmap_blob_init(jmap_settings_t *settings)
                         JMAP_URN_BLOB, json_object());
 
     jmap_add_methods(jmap_blob_methods_standard, settings);
+
+    jmap_build_prop_set(&jmap_blob_props_map, &blob_props, settings);
+    jmap_build_prop_set(&jmap_blob_upload_props_map,
+                        &blob_upload_props, settings);
 }
 
 HIDDEN void jmap_blob_capabilities(json_t *account_capabilities)
@@ -270,47 +279,6 @@ static int getblob_cb(const conv_guidrec_t* rec, void* vrock)
     return 0;
 }
 
-// clang-format off
-static const jmap_property_t blob_xprops[] = {
-    {
-        "data",
-        NULL,
-        JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE
-    },
-    {
-        "data:asBase64",
-        NULL,
-        JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE | JMAP_PROP_SKIP_GET
-    },
-    {
-        "data:asText",
-        NULL,
-        JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE | JMAP_PROP_SKIP_GET
-    },
-    {
-        "digest:md5",
-        NULL,
-        JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE | JMAP_PROP_SKIP_GET
-    },
-    {
-        "digest:sha",
-        NULL,
-        JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE | JMAP_PROP_SKIP_GET
-    },
-    {
-        "digest:sha-256",
-        NULL,
-        JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE | JMAP_PROP_SKIP_GET
-    },
-    {
-        "size",
-        NULL,
-        JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE
-    },
-    { NULL, NULL, 0 }
-};
-// clang-format on
-
 struct blob_range {
     size_t offset;
     size_t length;
@@ -357,7 +325,7 @@ static int jmap_blob_get(jmap_req_t *req)
 
     /* Parse request */
     struct blob_range range = { 0, 0 };
-    jmap_get_parse(req, &parser, blob_xprops, /*allow_null_ids*/0,
+    jmap_get_parse(req, &parser, &blob_props, /*allow_null_ids*/0,
                    &_parse_range, &range, &get, &err);
     if (err) {
         jmap_error(req, err);
@@ -835,28 +803,6 @@ done:
     return 0;
 }
 
-// clang-format off
-static const jmap_property_t blob_upload_props[] = {
-    {
-        "id",
-        NULL,
-        JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE | JMAP_PROP_ALWAYS_GET
-    },
-    {
-        "data",
-        NULL,
-        0
-    },
-    {
-        "type",
-        NULL,
-        0
-    },
-
-    { NULL, NULL, 0 }
-};
-// clang-format on
-
 static int _set_arg_to_buf(struct jmap_req *req, struct buf *buf, json_t *arg, int recurse, json_t **errp)
 {
     json_t *jitem;
@@ -969,7 +915,7 @@ static int jmap_blob_upload(struct jmap_req *req)
     time_t now = time(NULL);
 
     /* Parse arguments */
-    jmap_set_parse(req, &parser, blob_upload_props, NULL, NULL, &set, &jerr);
+    jmap_set_parse(req, &parser, &blob_upload_props, NULL, NULL, &set, &jerr);
     if (jerr) {
         jmap_error(req, jerr);
         goto done;
