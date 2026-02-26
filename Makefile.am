@@ -672,7 +672,6 @@ cunit_TESTS += \
     cunit/stristr.testc \
     cunit/times.testc \
     cunit/tok.testc \
-    cunit/vparse.testc \
     cunit/dynarray.testc \
     cunit/xsha1.testc
 
@@ -847,7 +846,6 @@ noinst_HEADERS += \
     lib/sessionid.h \
     lib/slowio.h \
     lib/util.h \
-    lib/vparse.h \
     lib/xstrlcat.h \
     lib/xstrlcpy.h \
     lib/xstrnchr.h
@@ -1581,7 +1579,6 @@ lib_libcyrus_min_la_SOURCES = \
     lib/strhash.c \
     lib/tok.c \
     lib/util.c \
-    lib/vparse.c \
     lib/xmalloc.c \
     lib/xstrlcat.c \
     lib/xstrlcpy.c \
