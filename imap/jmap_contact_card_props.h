@@ -39,13 +39,13 @@
 enum
   {
     CARD_PROP_TOTAL_KEYWORDS = 41,
-    CARD_PROP_MIN_WORD_LENGTH = 1,
+    CARD_PROP_MIN_WORD_LENGTH = 2,
     CARD_PROP_MAX_WORD_LENGTH = 24,
-    CARD_PROP_MIN_HASH_VALUE = 1,
+    CARD_PROP_MIN_HASH_VALUE = 2,
     CARD_PROP_MAX_HASH_VALUE = 64
   };
 
-/* maximum key range = 64, duplicates = 0 */
+/* maximum key range = 63, duplicates = 0 */
 
 #ifdef __GNUC__
 __inline
@@ -64,7 +64,7 @@ card_prop_hash (register const char *str, register size_t len)
       65, 65, 65, 65, 65, 65, 65, 65, 65, 65,
       65, 65, 65, 65, 65, 65, 65, 65, 65, 65,
       65, 65,  0, 65, 65, 65, 65, 65, 65, 65,
-      65, 65, 65, 65, 65, 65, 65, 65, 65, 65,
+      65, 65, 65, 65, 65, 65, 65, 65,  0, 65,
       65, 65, 65, 65, 65, 65, 65,  5, 65, 65,
       65, 65, 65, 65, 65, 65, 65, 65, 65, 65,
       65, 65, 65, 65, 65, 65, 65, 65, 65, 65,
@@ -86,27 +86,12 @@ card_prop_hash (register const char *str, register size_t len)
       65, 65, 65, 65, 65, 65, 65, 65, 65, 65,
       65, 65, 65, 65, 65, 65
     };
-  register unsigned int hval = len;
-
-  switch (hval)
-    {
-      default:
-        hval += asso_values[(unsigned char)str[1]];
-#if (defined __cplusplus && (__cplusplus >= 201703L || (__cplusplus >= 201103L && defined __clang__ && __clang_major__ + (__clang_minor__ >= 9) > 3))) || (defined __STDC_VERSION__ && __STDC_VERSION__ >= 202000L && ((defined __GNUC__ && __GNUC__ >= 10) || (defined __clang__ && __clang_major__ >= 9)))
-      [[fallthrough]];
-#elif (defined __GNUC__ && __GNUC__ >= 7) || (defined __clang__ && __clang_major__ >= 10)
-      __attribute__ ((__fallthrough__));
-#endif
-      /*FALLTHROUGH*/
-      case 1:
-        break;
-    }
-  return hval + asso_values[(unsigned char)str[len - 1]];
+  return len + asso_values[(unsigned char)str[1]] + asso_values[(unsigned char)str[len - 1]];
 }
 
 static const unsigned char card_prop_lengths[] =
   {
-     0,  1,  2,  0,  0,  5,  6,  7,  8,  9, 10,  6,  0,  0,
+     0,  0,  2,  3,  0,  5,  6,  7,  8,  9, 10,  6,  0,  0,
     14, 10,  0,  0,  3,  4,  5,  6,  0, 18,  9, 20, 11,  7,
     18, 24,  0,  6,  7, 13, 14, 10,  0,  7, 13,  9,  5,  0,
      0, 18,  9,  0,  0, 12, 13,  9,  0,  0,  0,  0,  4,  5,
@@ -115,12 +100,12 @@ static const unsigned char card_prop_lengths[] =
 
 static const jmap_property_t card_prop_array[] =
   {
-    {(char*)0,NULL,0},
-#line 72 "imap/jmap_contact_card_props.gperf"
-    {"*", NULL, 0},
+    {(char*)0,NULL,0}, {(char*)0,NULL,0},
 #line 28 "imap/jmap_contact_card_props.gperf"
     {"id",                  NULL, JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE | JMAP_PROP_ALWAYS_GET},
-    {(char*)0,NULL,0}, {(char*)0,NULL,0},
+#line 72 "imap/jmap_contact_card_props.gperf"
+    {"*:*", NULL, JMAP_PROP_SKIP_GET},
+    {(char*)0,NULL,0},
 #line 30 "imap/jmap_contact_card_props.gperf"
     {"@type",               NULL, JMAP_PROP_MANDATORY},
 #line 46 "imap/jmap_contact_card_props.gperf"

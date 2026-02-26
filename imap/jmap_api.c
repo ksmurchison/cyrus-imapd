@@ -1504,6 +1504,39 @@ HIDDEN int jmap_parse_strings(json_t *arg,
 }
 
 
+static bool wildcard_match(const char *str, const char *pat)
+{
+    for (; *pat; pat++, str++) {
+        if (*pat == '*') {
+            /* skip to next non-wildcard pattern char */
+            do {
+                pat++;
+            } while (*pat == '*');
+
+            if (!*str || *str == *pat) {
+                /* wildcard needs to match at least one string char */
+                return false;
+            }
+
+            if (!*pat) {
+                /* end of pattern - wildcard matches remainder of string */
+                return true;
+            }
+
+            /* wildcard matches string chars up to next pattern char */
+            while (*str && *str != *pat) str++;
+        }
+
+        if (*str != *pat) {
+            /* characters don't match */
+            return false;
+        }
+    }
+
+    /* have we matched the entire string? */
+    return (!*str);
+}
+
 HIDDEN const jmap_property_t *jmap_property_find(const char *name,
                                                  jmap_property_set_t *prop_set)
 {
@@ -1516,7 +1549,7 @@ HIDDEN const jmap_property_t *jmap_property_find(const char *name,
     if (prop) return prop;
 
     ptrarray_foreach(&prop_set->wildcards, i, prop) {
-        if (!strncmp(name, prop->name, strlen(prop->name)-1)) {
+        if (wildcard_match(name, prop->name)) {
             return prop;
         }
     }
