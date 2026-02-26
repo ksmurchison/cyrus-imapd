@@ -4230,10 +4230,11 @@ static int required_set_rights(json_t *props)
             !strcmp(myname, "addressbookId")) {
             /* immutable */
         }
-        else if (!strcmp(myname, "addressBookId") ||
+        else if (!strcmp(myname, "addressBookIds") ||
                  (!strncmp(myname, "cyrusimap.org:", 14) && (myname += 14) &&
                   (!strcmp(myname, "href") ||
-                   !strcmp(myname, "hasPhoto")))) {
+                   !strcmp(myname, "blobId") ||
+                   !strcmp(myname, "size")))) {
             /* immutable */
         }
         else if (!strcmp(myname, "importance")) {
@@ -6239,7 +6240,7 @@ static const jmap_property_t card_props[] = {
         JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE | JMAP_PROP_ALWAYS_GET
     },
     {
-        "addressBookId",
+        "addressBookIds",
         NULL,
         0
     },
