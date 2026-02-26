@@ -8451,6 +8451,38 @@ static json_t *jmap_card_from_vcard(const char *userid,
         json_object_set_new(jcard, "cyrusimap.org:importance", json_real(val));
     }
 
+    /* Sanity check some properties */
+    json_t *jprop = json_object_get(jcard, "name");
+    if (jprop &&
+        /* Need at least one of the following, otherwise remove it */
+        !json_object_get(jprop, "components") &&
+        !json_object_get(jprop, "full")) {
+        json_object_del(jcard, "name");
+    }
+
+    jprop = json_object_get(jcard, "addresses");
+    if (jprop) {
+        const char *id;
+        json_t *adr;
+        void *tmp;
+
+        json_object_foreach_safe(jprop, tmp, id, adr) {
+            /* Need at least one of the following, otherwise remove it */
+            if (!json_object_get(adr, "components") &&
+                !json_object_get(adr, "countryCode") &&
+                !json_object_get(adr, "coordinates") &&
+                !json_object_get(adr, "timeZone") &&
+                !json_object_get(adr, "full")) {
+                json_object_del(jprop, id);
+            }
+        }
+
+        if (!json_object_size(jprop)) {
+            /* If no addresses, remove it */
+            json_object_del(jcard, "addresses");
+        }
+    }
+
   done:
     buf_free(&buf);
     free_hash_table(&labels, &free);
