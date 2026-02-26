@@ -1202,8 +1202,10 @@ static void _contacts_set(struct jmap_req *req, unsigned kind,
         set.old_state = modseqtoa(jmap_modseq(req, MBTYPE_ADDRESSBOOK, 0));
     }
 
-    r = carddav_create_defaultaddressbook(req->accountid);
-    if (r) goto done;
+    if (!has_addressbooks(req)) {
+        r = carddav_create_defaultaddressbook(req->accountid);
+        if (r) goto done;
+    }
 
     /* create */
     const char *key;
@@ -5090,6 +5092,7 @@ static void abookid_to_mbentry(jmap_req_t *req, const char *id,
 struct getaddressbooks_rock {
     struct jmap_req *req;
     struct jmap_get *get;
+    const char *default_addrbookname;
     int skip_hidden;
 };
 
@@ -5174,10 +5177,8 @@ static int getaddressbooks_cb(const mbentry_t *mbentry, void *vrock)
     }
 
     if (jmap_wantprop(rock->get->props, "isDefault")) {
-        char *addrbook = mboxname_abook(req->accountid, DEFAULT_ADDRBOOK);
-        json_object_set_new(obj, "isDefault",
-                            json_boolean(!strcmp(addrbook, mbentry->name)));
-        free(addrbook);
+        bool is_default = !strcmp(rock->default_addrbookname, mbentry->name);
+        json_object_set_new(obj, "isDefault", json_boolean(is_default));
     }
 
     if (jmap_wantprop(rock->get->props, "isSubscribed")) {
@@ -5194,6 +5195,10 @@ static int getaddressbooks_cb(const mbentry_t *mbentry, void *vrock)
     }
 
     if (jmap_wantprop(rock->get->props, "myRights")) {
+        if (!strcmp(rock->default_addrbookname, mbentry->name)) {
+            /* We don't allow deleting the default addressbook */
+            rights &= ~JACL_DELETE;
+        }
         json_object_set_new(obj, "myRights", addressbookrights_to_jmap(rights));
     }
 
@@ -5263,10 +5268,34 @@ static const jmap_property_t addressbook_props[] = {
 };
 // clang-format on
 
+static const char *default_addrbookname_annot =
+    DAV_ANNOT_NS "<" XML_NS_CYRUS ">jmap-default-addressbook";
+
+static char *lookup_default_addrbookname(char *cardhomename)
+{
+    struct buf buf = BUF_INITIALIZER;
+
+    int r = annotatemore_lookupmask(cardhomename,
+                                    default_addrbookname_annot, "", &buf);
+
+    if (r || !buf.len) {
+        /* fallback to specifically-named default created at provisioning */
+        mbname_t *mbname = mbname_from_intname(cardhomename);
+
+        mbname_push_boxes(mbname, DEFAULT_ADDRBOOK);
+        buf_setcstr(&buf, mbname_intname(mbname));
+        mbname_free(&mbname);
+    }
+
+    return buf_release(&buf);
+}
+
 static int jmap_addressbook_get(struct jmap_req *req)
 {
     struct jmap_parser parser = JMAP_PARSER_INITIALIZER;
     struct jmap_get get = JMAP_GET_INITIALIZER;
+    char *cardhomename = NULL;
+    char *default_addrbookname = NULL;
     json_t *err = NULL;
     int r = 0;
 
@@ -5278,8 +5307,12 @@ static int jmap_addressbook_get(struct jmap_req *req)
         goto done;
     }
 
+    cardhomename = carddav_mboxname(req->accountid, NULL);
+    default_addrbookname = lookup_default_addrbookname(cardhomename);
+
     /* Build callback data */
-    struct getaddressbooks_rock rock = { req, &get, 1 /*skiphidden*/ };
+    struct getaddressbooks_rock rock =
+        { req, &get, default_addrbookname, 1 /*skiphidden*/ };
 
     /* Does the client request specific addressbooks? */
     if (JNOTNULL(get.ids)) {
@@ -5308,10 +5341,8 @@ static int jmap_addressbook_get(struct jmap_req *req)
         }
     }
     else {
-        char *cardhomename = carddav_mboxname(req->accountid, NULL);
         r = mboxlist_mboxtree(cardhomename,
                               &getaddressbooks_cb, &rock, MBOXTREE_SKIP_ROOT);
-        free(cardhomename);
         if (r) goto done;
     }
 
@@ -5322,6 +5353,8 @@ static int jmap_addressbook_get(struct jmap_req *req)
 done:
     jmap_parser_fini(&parser);
     jmap_get_fini(&get);
+    free(default_addrbookname);
+    free(cardhomename);
     return r;
 }
 
@@ -5657,9 +5690,9 @@ static int _addressbook_hascards_cb(void *rock __attribute__((unused)),
 
 /* Delete the addressbook mailbox named mboxname for the userid in req. */
 static void setaddressbooks_destroy(jmap_req_t *req, const char *abookid,
+                                    const char *default_addrbookname,
                                     int destroy_contents, json_t **err)
 {
-    char *mboxname = carddav_mboxname(req->accountid, DEFAULT_ADDRBOOK);
     mbentry_t *mbentry = NULL;
     struct carddav_db *db = NULL;
     int r = 0;
@@ -5676,8 +5709,8 @@ static void setaddressbooks_destroy(jmap_req_t *req, const char *abookid,
         goto done;
     }
 
-    /* XXX  Don't delete default addressbook ??? */
-    if (!strcmp(mbentry->name, mboxname)) {
+    /* Don't delete default addressbook */
+    if (!strcmp(mbentry->name, default_addrbookname)) {
         *err = json_pack("{s:s}", "type", "forbidden");
         goto done;
     }
@@ -5745,7 +5778,6 @@ static void setaddressbooks_destroy(jmap_req_t *req, const char *abookid,
         }
     }
     mboxlist_entry_free(&mbentry);
-    free(mboxname);
 }
 
 static char *setaddressbooks_create_rewriteacl(jmap_req_t *req,
@@ -5954,33 +5986,76 @@ done:
     jmap_parser_fini(&parser);
 }
 
+struct addressbook_set_args {
+    bool on_destroy_remove_contents;
+    const char *on_success_set_is_default;
+};
+
 static int setaddressbooks_parse_args(jmap_req_t *req __attribute__((unused)),
                                       struct jmap_parser *parser __attribute__((unused)),
                                       const char *arg, json_t *val, void *rock)
 {
-    int *on_destroy_remove_contents = rock;
-    *on_destroy_remove_contents = 0;
+    struct addressbook_set_args *setargs = (struct addressbook_set_args *) rock;
 
     if (!strcmp(arg, "onDestroyRemoveContents")) {
         if (json_is_boolean(val)) {
-            *on_destroy_remove_contents = json_boolean_value(val);
+            setargs->on_destroy_remove_contents = json_boolean_value(val);
             return 1;
         }
     }
+
+    else if (!strcmp(arg, "onSuccessSetIsDefault")) {
+        if (json_is_string(val)) {
+            setargs->on_success_set_is_default = json_string_value(val);
+            return 1;
+        }
+    }
+
     return 0;
+}
+
+static void report_isdefault(struct jmap_set *set, const char *name,
+                             const char *id, bool isdef)
+{
+    json_t *obj;
+
+    if (*id == '#')
+        obj = json_object_get(set->created, id+1);
+    else
+        obj = json_object_get(set->updated, id);
+
+    if (obj) {
+        json_object_set_new(obj, "isDefault", json_boolean(isdef));
+    }
+    else {
+        /* Bump modseq so the mailbox shows up in /changes */
+        struct mailbox *mailbox = NULL;
+
+        mailbox_open_iwl(name, &mailbox);
+        if (mailbox) {
+            mboxlist_update_foldermodseq(name,
+                                         mailbox_modseq_dirty(mailbox));
+            mailbox_close(&mailbox);
+        }
+
+        json_object_set_new(set->updated, id,
+                            json_pack("{s:b}", "isDefault", isdef));
+    }
 }
 
 static int jmap_addressbook_set(struct jmap_req *req)
 {
     struct jmap_parser argparser = JMAP_PARSER_INITIALIZER;
     struct jmap_set set = JMAP_SET_INITIALIZER;
-    int on_destroy_remove_contents = 0;
+    struct addressbook_set_args setargs = { 0 };
+    char *cardhomename = NULL;
+    char *default_addrbookname = NULL;
     json_t *err = NULL;
     int r = 0;
 
     /* Parse arguments */
-    jmap_set_parse(req, &argparser, addressbook_props, setaddressbooks_parse_args,
-                   &on_destroy_remove_contents, &set, &err);
+    jmap_set_parse(req, &argparser, addressbook_props,
+                   setaddressbooks_parse_args, &setargs, &set, &err);
     if (err) {
         jmap_error(req, err);
         goto done;
@@ -5997,8 +6072,13 @@ static int jmap_addressbook_set(struct jmap_req *req)
         set.old_state = modseqtoa(jmap_modseq(req, MBTYPE_ADDRESSBOOK, 0));
     }
 
-    r = carddav_create_defaultaddressbook(req->accountid);
-    if (r) goto done;
+    cardhomename = carddav_mboxname(req->accountid, NULL);
+    default_addrbookname = lookup_default_addrbookname(cardhomename);
+
+    if (!has_addressbooks(req)) {
+        r = carddav_create_defaultaddressbook(req->accountid);
+        if (r) goto done;
+    }
 
     /* create */
     const char *key;
@@ -6068,20 +6148,70 @@ static int jmap_addressbook_set(struct jmap_req *req)
             abookid = newabookid;
         }
         json_t *err = NULL;
-        setaddressbooks_destroy(req, abookid, on_destroy_remove_contents, &err);
+        setaddressbooks_destroy(req, abookid, default_addrbookname,
+                                setargs.on_destroy_remove_contents, &err);
         if (!err) {
             json_array_append_new(set.destroyed, json_string(id));
         }
         else json_object_set_new(set.not_destroyed, id, err);
     }
 
-    set.new_state = modseqtoa(jmap_modseq(req, MBTYPE_ADDRESSBOOK, JMAP_MODSEQ_RELOAD));
+    if (setargs.on_success_set_is_default &&
+        /* No failures */
+        !json_object_size(set.not_created) &&
+        !json_object_size(set.not_updated) &&
+        !json_object_size(set.not_destroyed)) {
+
+        /* resolve new default addressbook id */
+        const char *newid = setargs.on_success_set_is_default;
+        if (*newid == '#') {
+            json_t *jobj = json_object_get(set.created, newid+1);
+            if (jobj) newid = json_string_value(json_object_get(jobj, "id"));
+        }
+
+        /* make sure new default addressbook exists
+           and we have rights to change the default */
+        mbentry_t *mbentry = NULL;
+        abookid_to_mbentry(req, newid, &mbentry);
+        if (mbentry &&
+            jmap_hasrights_mbentry(req, mbentry, JACL_ADMIN_ADDRBOOK)) {
+            /* set jmap-default-addressbook annotation */
+            struct buf buf = BUF_INITIALIZER;
+            buf_init_ro_cstr(&buf, mbentry->name);
+            r = annotatemore_writemask(cardhomename, default_addrbookname_annot,
+                                       req->accountid, &buf);
+            buf_free(&buf);
+
+            if (!r) {
+                /* report that isDefault has been moved to new addressbook */
+                report_isdefault(&set, mbentry->name,
+                                 setargs.on_success_set_is_default, true);
+
+                /* report that isDefault has been removed from old default */
+                mboxlist_entry_free(&mbentry);
+                mboxlist_lookup(default_addrbookname, &mbentry, NULL);
+                if (mbentry) {
+                    char oldid[JMAP_MAX_ADDRBOOKID_SIZE];
+
+                    jmap_set_addrbookid(req->cstate, mbentry, oldid);
+                    report_isdefault(&set, mbentry->name, oldid, false);
+                }
+            }
+        }
+
+        mboxlist_entry_free(&mbentry);
+    }
+
+    set.new_state =
+        modseqtoa(jmap_modseq(req, MBTYPE_ADDRESSBOOK, JMAP_MODSEQ_RELOAD));
 
     jmap_ok(req, jmap_set_reply(&set));
 
 done:
     jmap_parser_fini(&argparser);
     jmap_set_fini(&set);
+    free(default_addrbookname);
+    free(cardhomename);
     return r;
 }
 
