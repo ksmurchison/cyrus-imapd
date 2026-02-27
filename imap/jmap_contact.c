@@ -39,6 +39,11 @@
 /* generated headers are not necessarily in current directory */
 #include "imap/http_err.h"
 #include "imap/imap_err.h"
+#include "imap/jmap_contact_group_props.h"
+#include "imap/jmap_contact_props.h"
+#include "imap/jmap_contact_addressbook_props.h"
+#include "imap/jmap_contact_card_props.h"
+//extern const jmap_property_set_t card_props;
 
 static int jmap_addressbook_get(struct jmap_req *req);
 static int jmap_addressbook_changes(struct jmap_req *req);
@@ -380,8 +385,11 @@ static json_t *jmap_group_from_vcard(struct vparse_card *vcard)
             json_object_set_new(obj, "name", jmap_utf8string(propval));
         }
 
-        else if (!strcasecmp(name, "member") ||
-                 !strcasecmp(name, "x-addressbookserver-member")) {
+        else if (!strcasecmp(name, "member")) {
+            json_object_set_new(contactids_set, propval, json_true());
+        }
+
+        else if (!strcasecmp(name, "x-addressbookserver-member")) {
             if (strncmp(propval, "urn:uuid:", 9)) continue;
             json_object_set_new(contactids_set, propval+9, json_true());
         }
@@ -487,201 +495,6 @@ static int getgroups_cb(void *rock, struct carddav_data *cdata)
     return r;
 }
 
-// clang-format off
-static const jmap_property_t contact_props[] = {
-    {
-        "id",
-        NULL,
-        JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE | JMAP_PROP_ALWAYS_GET
-    },
-    {
-        "uid",
-        NULL,
-        JMAP_PROP_IMMUTABLE
-    },
-    {
-        "isFlagged",
-        NULL,
-        0
-    },
-    {
-        "avatar",
-        NULL,
-        0
-    },
-    {
-        "prefix",
-        NULL,
-        0
-    },
-    {
-        "firstName",
-        NULL,
-        0
-    },
-    {
-        "lastName",
-        NULL,
-        0
-    },
-    {
-        "suffix",
-        NULL,
-        0
-    },
-    {
-        "nickname",
-        NULL,
-        0
-    },
-    {
-        "birthday",
-        NULL,
-        0
-    },
-    {
-        "anniversary",
-        NULL,
-        0
-    },
-    {
-        "company",
-        NULL,
-        0
-    },
-    {
-        "department",
-        NULL,
-        0
-    },
-    {
-        "jobTitle",
-        NULL,
-        0
-    },
-    {
-        "emails",
-        NULL,
-        0
-    },
-    {
-        "phones",
-        NULL,
-        0
-    },
-    {
-        "online",
-        NULL,
-        0
-    },
-    {
-        "addresses",
-        NULL,
-        0
-    },
-    {
-        "notes",
-        NULL,
-        0
-    },
-
-    /* RFC 9555 conversion properties - for internal use only */
-    {
-        "vCardProps",
-        NULL,
-        JMAP_PROP_REJECT_GET | JMAP_PROP_REJECT_SET | JMAP_PROP_SKIP_GET
-    },
-    {
-        "vCardName",
-        NULL,
-        JMAP_PROP_REJECT_GET | JMAP_PROP_REJECT_SET | JMAP_PROP_SKIP_GET
-    },
-    {
-        "vCardParams",
-        NULL,
-        JMAP_PROP_REJECT_GET | JMAP_PROP_REJECT_SET | JMAP_PROP_SKIP_GET
-    },
-
-    /* FM extensions */
-    {
-        "addressbookId",
-        JMAP_CONTACTS_EXTENSION,
-        0
-    },
-    {
-        "x-href",
-        JMAP_CONTACTS_EXTENSION,
-        JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE
-    }, // AJAXUI only
-    {
-        "x-hasPhoto",
-        JMAP_CONTACTS_EXTENSION,
-        JMAP_PROP_SERVER_SET
-    }, // AJAXUI only
-    {
-        "importance",
-        JMAP_CONTACTS_EXTENSION,
-        0
-    },  // JMAPUI only
-    {
-        "blobId",
-        JMAP_CONTACTS_EXTENSION,
-        JMAP_PROP_SERVER_SET
-    },
-    {
-        "size",
-        JMAP_CONTACTS_EXTENSION,
-        JMAP_PROP_SERVER_SET
-    },
-
-    { NULL, NULL, 0 }
-};
-// clang-format on
-
-// clang-format off
-static const jmap_property_t group_props[] = {
-    {
-        "id",
-        NULL,
-        JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE | JMAP_PROP_ALWAYS_GET
-    },
-    {
-        "uid",
-        NULL,
-        JMAP_PROP_IMMUTABLE
-    },
-    {
-        "name",
-        NULL,
-        0
-    },
-    {
-        "contactIds",
-        NULL,
-        0
-    },
-
-    // FM extensions */
-    {
-        "addressbookId",
-        JMAP_CONTACTS_EXTENSION,
-        0
-    },
-    {
-        "x-href",
-        JMAP_CONTACTS_EXTENSION,
-        JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE
-    }, // AJAXUI only
-    {
-        "otherAccountContactIds",
-        JMAP_CONTACTS_EXTENSION,
-        0
-    }, // Both AJAXUI and JMAPUI
-
-    { NULL, NULL, 0 }
-};
-// clang-format on
-
 static void cachecards_cb(uint64_t rowid, void *payload, void *vrock)
 {
     const char *jscard = payload;
@@ -714,7 +527,7 @@ static int has_addressbooks(jmap_req_t *req)
 }
 
 static int _contacts_get(struct jmap_req *req, carddav_cb_t *cb, int kind,
-                         const jmap_property_t *props)
+                         const jmap_property_set_t *props)
 {
     if (!has_addressbooks(req)) {
         jmap_error(req, json_pack("{s:s}", "type", "accountNoAddressbooks"));
@@ -831,7 +644,7 @@ static int _contacts_get(struct jmap_req *req, carddav_cb_t *cb, int kind,
 
 static int jmap_contactgroup_get(struct jmap_req *req)
 {
-    return _contacts_get(req, &getgroups_cb, CARDDAV_KIND_GROUP, group_props);
+    return _contacts_get(req, &getgroups_cb, CARDDAV_KIND_GROUP, &group_props);
 }
 
 static const char *_json_array_get_string(const json_t *obj, size_t index)
@@ -975,8 +788,12 @@ static int _add_group_entries(struct jmap_req *req,
     int r = 0;
     size_t index;
     struct buf buf = BUF_INITIALIZER;
+    int is_v4 = 0;
 
-    if (ventry && atof(ventry->v.value) >= 4.0) group_propname =  "MEMBER";
+    if (ventry && atof(ventry->v.value) >= 4.0) {
+        is_v4 = 1;
+        group_propname =  "MEMBER";
+    }
 
     vparse_delete_entries(card, NULL, group_propname);
 
@@ -991,7 +808,7 @@ static int _add_group_entries(struct jmap_req *req,
         }
 
         buf_reset(&buf);
-        if (strncmpsafe("urn:uuid:", uid, 9)) {
+        if (!is_v4 && strncmpsafe("urn:uuid:", uid, 9)) {
             buf_setcstr(&buf, "urn:uuid:");
         }
 
@@ -1144,7 +961,7 @@ static void reject_convprops(json_t *jpatch, json_t *invalid) {
 }
 
 static void _contacts_set(struct jmap_req *req, unsigned kind,
-                          const jmap_property_t *props,
+                          const jmap_property_set_t *props,
                           int (*_set_create)(jmap_req_t *req,
                                              unsigned kind,
                                              json_t *jcard,
@@ -1195,8 +1012,10 @@ static void _contacts_set(struct jmap_req *req, unsigned kind,
         set.old_state = modseqtoa(jmap_modseq(req, MBTYPE_ADDRESSBOOK, 0));
     }
 
-    r = carddav_create_defaultaddressbook(req->accountid);
-    if (r) goto done;
+    if (!has_addressbooks(req)) {
+        r = carddav_create_defaultaddressbook(req->accountid);
+        if (r) goto done;
+    }
 
     /* create */
     const char *key;
@@ -1412,7 +1231,7 @@ done:
 
 static int jmap_contactgroup_set(struct jmap_req *req)
 {
-    _contacts_set(req, CARDDAV_KIND_GROUP, group_props,
+    _contacts_set(req, CARDDAV_KIND_GROUP, &group_props,
                   &_contact_set_create, &_contact_set_update);
     return 0;
 }
@@ -2123,7 +1942,7 @@ static int getcontacts_cb(void *rock, struct carddav_data *cdata)
 
 static int jmap_contact_get(struct jmap_req *req)
 {
-    return _contacts_get(req, &getcontacts_cb, CARDDAV_KIND_CONTACT, contact_props);
+    return _contacts_get(req, &getcontacts_cb, CARDDAV_KIND_CONTACT, &contact_props);
 }
 
 static int jmap_contact_changes(struct jmap_req *req)
@@ -4221,10 +4040,11 @@ static int required_set_rights(json_t *props)
             !strcmp(myname, "addressbookId")) {
             /* immutable */
         }
-        else if (!strcmp(myname, "addressBookId") ||
+        else if (!strcmp(myname, "addressBookIds") ||
                  (!strncmp(myname, "cyrusimap.org:", 14) && (myname += 14) &&
                   (!strcmp(myname, "href") ||
-                   !strcmp(myname, "hasPhoto")))) {
+                   !strcmp(myname, "blobId") ||
+                   !strcmp(myname, "size")))) {
             /* immutable */
         }
         else if (!strcmp(myname, "importance")) {
@@ -4705,7 +4525,7 @@ static int _contact_set_update(jmap_req_t *req,
 
 static int jmap_contact_set(struct jmap_req *req)
 {
-    _contacts_set(req, CARDDAV_KIND_CONTACT, contact_props,
+    _contacts_set(req, CARDDAV_KIND_CONTACT, &contact_props,
                   &_contact_set_create, &_contact_set_update);
 
     return 0;
@@ -5083,6 +4903,7 @@ static void abookid_to_mbentry(jmap_req_t *req, const char *id,
 struct getaddressbooks_rock {
     struct jmap_req *req;
     struct jmap_get *get;
+    const char *default_addrbookname;
     int skip_hidden;
 };
 
@@ -5167,10 +4988,8 @@ static int getaddressbooks_cb(const mbentry_t *mbentry, void *vrock)
     }
 
     if (jmap_wantprop(rock->get->props, "isDefault")) {
-        char *addrbook = mboxname_abook(req->accountid, DEFAULT_ADDRBOOK);
-        json_object_set_new(obj, "isDefault",
-                            json_boolean(!strcmp(addrbook, mbentry->name)));
-        free(addrbook);
+        bool is_default = !strcmp(rock->default_addrbookname, mbentry->name);
+        json_object_set_new(obj, "isDefault", json_boolean(is_default));
     }
 
     if (jmap_wantprop(rock->get->props, "isSubscribed")) {
@@ -5187,6 +5006,10 @@ static int getaddressbooks_cb(const mbentry_t *mbentry, void *vrock)
     }
 
     if (jmap_wantprop(rock->get->props, "myRights")) {
+        if (!strcmp(rock->default_addrbookname, mbentry->name)) {
+            /* We don't allow deleting the default addressbook */
+            rights &= ~JACL_DELETE;
+        }
         json_object_set_new(obj, "myRights", addressbookrights_to_jmap(rights));
     }
 
@@ -5196,83 +5019,61 @@ static int getaddressbooks_cb(const mbentry_t *mbentry, void *vrock)
         json_object_set_new(obj, "shareWith", sharewith);
     }
 
+    if (jmap_wantprop(rock->get->props, "mailboxUniqueId")) {
+        json_object_set_new(obj, "mailboxUniqueId", json_string(mbentry->uniqueid));
+    }
+
     json_array_append_new(rock->get->list, obj);
 
     buf_free(&attrib);
     return r;
 }
 
-// clang-format off
-static const jmap_property_t addressbook_props[] = {
-    {
-        "id",
-        NULL,
-        JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE | JMAP_PROP_ALWAYS_GET
-    },
-    {
-        "name",
-        NULL,
-        JMAP_PROP_MANDATORY
-    },
-    {
-        "description",
-        NULL,
-        0
-    },
-    {
-        "sortOrder",
-        NULL,
-        0
-    },
-    {
-        "isDefault",
-        NULL,
-        JMAP_PROP_SERVER_SET
-    },
-    {
-        "isSubscribed",
-        NULL,
-        0
-    },
-    {
-        "shareWith",
-        NULL,
-        0
-    },
-    {
-        "myRights",
-        NULL,
-        JMAP_PROP_SERVER_SET
-    },
+static const char *default_addrbookname_annot =
+    DAV_ANNOT_NS "<" XML_NS_CYRUS ">jmap-default-addressbook";
 
-    /* FM extensions (do ALL of these get through to Cyrus?) */
-    {
-        "cyrusimap.org:href",
-        JMAP_CONTACTS_EXTENSION,
-        JMAP_PROP_SERVER_SET
-    },
+static char *lookup_default_addrbookname(char *cardhomename)
+{
+    struct buf buf = BUF_INITIALIZER;
 
-    { NULL, NULL, 0 }
-};
-// clang-format on
+    int r = annotatemore_lookupmask(cardhomename,
+                                    default_addrbookname_annot, "", &buf);
+
+    if (r || !buf.len) {
+        /* fallback to specifically-named default created at provisioning */
+        mbname_t *mbname = mbname_from_intname(cardhomename);
+
+        mbname_push_boxes(mbname, DEFAULT_ADDRBOOK);
+        buf_setcstr(&buf, mbname_intname(mbname));
+        mbname_free(&mbname);
+    }
+
+    return buf_release(&buf);
+}
 
 static int jmap_addressbook_get(struct jmap_req *req)
 {
     struct jmap_parser parser = JMAP_PARSER_INITIALIZER;
     struct jmap_get get = JMAP_GET_INITIALIZER;
+    char *cardhomename = NULL;
+    char *default_addrbookname = NULL;
     json_t *err = NULL;
     int r = 0;
 
     /* Parse request */
-    jmap_get_parse(req, &parser, addressbook_props, /*allow_null_ids*/1,
+    jmap_get_parse(req, &parser, &addressbook_props, /*allow_null_ids*/1,
                    NULL, NULL, &get, &err);
     if (err) {
         jmap_error(req, err);
         goto done;
     }
 
+    cardhomename = carddav_mboxname(req->accountid, NULL);
+    default_addrbookname = lookup_default_addrbookname(cardhomename);
+
     /* Build callback data */
-    struct getaddressbooks_rock rock = { req, &get, 1 /*skiphidden*/ };
+    struct getaddressbooks_rock rock =
+        { req, &get, default_addrbookname, 1 /*skiphidden*/ };
 
     /* Does the client request specific addressbooks? */
     if (JNOTNULL(get.ids)) {
@@ -5301,10 +5102,8 @@ static int jmap_addressbook_get(struct jmap_req *req)
         }
     }
     else {
-        char *cardhomename = carddav_mboxname(req->accountid, NULL);
         r = mboxlist_mboxtree(cardhomename,
                               &getaddressbooks_cb, &rock, MBOXTREE_SKIP_ROOT);
-        free(cardhomename);
         if (r) goto done;
     }
 
@@ -5315,6 +5114,8 @@ static int jmap_addressbook_get(struct jmap_req *req)
 done:
     jmap_parser_fini(&parser);
     jmap_get_fini(&get);
+    free(default_addrbookname);
+    free(cardhomename);
     return r;
 }
 
@@ -5650,9 +5451,9 @@ static int _addressbook_hascards_cb(void *rock __attribute__((unused)),
 
 /* Delete the addressbook mailbox named mboxname for the userid in req. */
 static void setaddressbooks_destroy(jmap_req_t *req, const char *abookid,
+                                    const char *default_addrbookname,
                                     int destroy_contents, json_t **err)
 {
-    char *mboxname = carddav_mboxname(req->accountid, DEFAULT_ADDRBOOK);
     mbentry_t *mbentry = NULL;
     struct carddav_db *db = NULL;
     int r = 0;
@@ -5669,8 +5470,8 @@ static void setaddressbooks_destroy(jmap_req_t *req, const char *abookid,
         goto done;
     }
 
-    /* XXX  Don't delete default addressbook ??? */
-    if (!strcmp(mbentry->name, mboxname)) {
+    /* Don't delete default addressbook */
+    if (!strcmp(mbentry->name, default_addrbookname)) {
         *err = json_pack("{s:s}", "type", "forbidden");
         goto done;
     }
@@ -5738,7 +5539,6 @@ static void setaddressbooks_destroy(jmap_req_t *req, const char *abookid,
         }
     }
     mboxlist_entry_free(&mbentry);
-    free(mboxname);
 }
 
 static char *setaddressbooks_create_rewriteacl(jmap_req_t *req,
@@ -5867,6 +5667,8 @@ static void setaddressbooks_create(struct jmap_req *req,
     jmap_add_id(req, creation_id, id);
 
     if (jmap_is_using(req, JMAP_CONTACTS_EXTENSION)) {
+        json_object_set_new(*record, "mailboxUniqueId",
+                        json_string(newmbentry->uniqueid));
         char *xhref = jmap_xhref(mboxname, NULL);
         json_object_set_new(*record, "cyrusimap.org:href", json_string(xhref));
         free(xhref);
@@ -5947,33 +5749,76 @@ done:
     jmap_parser_fini(&parser);
 }
 
+struct addressbook_set_args {
+    bool on_destroy_remove_contents;
+    const char *on_success_set_is_default;
+};
+
 static int setaddressbooks_parse_args(jmap_req_t *req __attribute__((unused)),
                                       struct jmap_parser *parser __attribute__((unused)),
                                       const char *arg, json_t *val, void *rock)
 {
-    int *on_destroy_remove_contents = rock;
-    *on_destroy_remove_contents = 0;
+    struct addressbook_set_args *setargs = (struct addressbook_set_args *) rock;
 
     if (!strcmp(arg, "onDestroyRemoveContents")) {
         if (json_is_boolean(val)) {
-            *on_destroy_remove_contents = json_boolean_value(val);
+            setargs->on_destroy_remove_contents = json_boolean_value(val);
             return 1;
         }
     }
+
+    else if (!strcmp(arg, "onSuccessSetIsDefault")) {
+        if (json_is_string(val)) {
+            setargs->on_success_set_is_default = json_string_value(val);
+            return 1;
+        }
+    }
+
     return 0;
+}
+
+static void report_isdefault(struct jmap_set *set, const char *name,
+                             const char *id, bool isdef)
+{
+    json_t *obj;
+
+    if (*id == '#')
+        obj = json_object_get(set->created, id+1);
+    else
+        obj = json_object_get(set->updated, id);
+
+    if (obj) {
+        json_object_set_new(obj, "isDefault", json_boolean(isdef));
+    }
+    else {
+        /* Bump modseq so the mailbox shows up in /changes */
+        struct mailbox *mailbox = NULL;
+
+        mailbox_open_iwl(name, &mailbox);
+        if (mailbox) {
+            mboxlist_update_foldermodseq(name,
+                                         mailbox_modseq_dirty(mailbox));
+            mailbox_close(&mailbox);
+        }
+
+        json_object_set_new(set->updated, id,
+                            json_pack("{s:b}", "isDefault", isdef));
+    }
 }
 
 static int jmap_addressbook_set(struct jmap_req *req)
 {
     struct jmap_parser argparser = JMAP_PARSER_INITIALIZER;
     struct jmap_set set = JMAP_SET_INITIALIZER;
-    int on_destroy_remove_contents = 0;
+    struct addressbook_set_args setargs = { 0 };
+    char *cardhomename = NULL;
+    char *default_addrbookname = NULL;
     json_t *err = NULL;
     int r = 0;
 
     /* Parse arguments */
-    jmap_set_parse(req, &argparser, addressbook_props, setaddressbooks_parse_args,
-                   &on_destroy_remove_contents, &set, &err);
+    jmap_set_parse(req, &argparser, &addressbook_props,
+                   setaddressbooks_parse_args, &setargs, &set, &err);
     if (err) {
         jmap_error(req, err);
         goto done;
@@ -5990,8 +5835,13 @@ static int jmap_addressbook_set(struct jmap_req *req)
         set.old_state = modseqtoa(jmap_modseq(req, MBTYPE_ADDRESSBOOK, 0));
     }
 
-    r = carddav_create_defaultaddressbook(req->accountid);
-    if (r) goto done;
+    cardhomename = carddav_mboxname(req->accountid, NULL);
+    default_addrbookname = lookup_default_addrbookname(cardhomename);
+
+    if (!has_addressbooks(req)) {
+        r = carddav_create_defaultaddressbook(req->accountid);
+        if (r) goto done;
+    }
 
     /* create */
     const char *key;
@@ -6061,20 +5911,70 @@ static int jmap_addressbook_set(struct jmap_req *req)
             abookid = newabookid;
         }
         json_t *err = NULL;
-        setaddressbooks_destroy(req, abookid, on_destroy_remove_contents, &err);
+        setaddressbooks_destroy(req, abookid, default_addrbookname,
+                                setargs.on_destroy_remove_contents, &err);
         if (!err) {
             json_array_append_new(set.destroyed, json_string(id));
         }
         else json_object_set_new(set.not_destroyed, id, err);
     }
 
-    set.new_state = modseqtoa(jmap_modseq(req, MBTYPE_ADDRESSBOOK, JMAP_MODSEQ_RELOAD));
+    if (setargs.on_success_set_is_default &&
+        /* No failures */
+        !json_object_size(set.not_created) &&
+        !json_object_size(set.not_updated) &&
+        !json_object_size(set.not_destroyed)) {
+
+        /* resolve new default addressbook id */
+        const char *newid = setargs.on_success_set_is_default;
+        if (*newid == '#') {
+            json_t *jobj = json_object_get(set.created, newid+1);
+            if (jobj) newid = json_string_value(json_object_get(jobj, "id"));
+        }
+
+        /* make sure new default addressbook exists
+           and we have rights to change the default */
+        mbentry_t *mbentry = NULL;
+        abookid_to_mbentry(req, newid, &mbentry);
+        if (mbentry &&
+            jmap_hasrights_mbentry(req, mbentry, JACL_ADMIN_ADDRBOOK)) {
+            /* set jmap-default-addressbook annotation */
+            struct buf buf = BUF_INITIALIZER;
+            buf_init_ro_cstr(&buf, mbentry->name);
+            r = annotatemore_writemask(cardhomename, default_addrbookname_annot,
+                                       req->accountid, &buf);
+            buf_free(&buf);
+
+            if (!r) {
+                /* report that isDefault has been moved to new addressbook */
+                report_isdefault(&set, mbentry->name,
+                                 setargs.on_success_set_is_default, true);
+
+                /* report that isDefault has been removed from old default */
+                mboxlist_entry_free(&mbentry);
+                mboxlist_lookup(default_addrbookname, &mbentry, NULL);
+                if (mbentry) {
+                    char oldid[JMAP_MAX_ADDRBOOKID_SIZE];
+
+                    jmap_set_addrbookid(req->cstate, mbentry, oldid);
+                    report_isdefault(&set, mbentry->name, oldid, false);
+                }
+            }
+        }
+
+        mboxlist_entry_free(&mbentry);
+    }
+
+    set.new_state =
+        modseqtoa(jmap_modseq(req, MBTYPE_ADDRESSBOOK, JMAP_MODSEQ_RELOAD));
 
     jmap_ok(req, jmap_set_reply(&set));
 
 done:
     jmap_parser_fini(&argparser);
     jmap_set_fini(&set);
+    free(default_addrbookname);
+    free(cardhomename);
     return r;
 }
 
@@ -6082,223 +5982,6 @@ done:
 /*****************************************************************************
  * JMAP ContactCard API
  ****************************************************************************/
-
-// clang-format off
-static const jmap_property_t card_props[] = {
-    {
-        "id",
-        NULL,
-        JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE | JMAP_PROP_ALWAYS_GET
-    },
-    {
-        "addressBookId",
-        NULL,
-        0
-    },
-    {
-        "@type",
-        NULL,
-        JMAP_PROP_MANDATORY
-    },
-    {
-        "version",
-        NULL,
-        JMAP_PROP_MANDATORY
-    },
-    {
-        "created",
-        NULL,
-        0
-    },
-    {
-        "kind",
-        NULL,
-        0
-    },
-    {
-        "language",
-        NULL,
-        0
-    },
-    {
-        "members",
-        NULL,
-        0
-    },
-    {
-        "prodId",
-        NULL,
-        0
-    },
-    {
-        "relatedTo",
-        NULL,
-        0
-    },
-    {
-        "uid",
-        NULL,
-        JMAP_PROP_IMMUTABLE
-    },
-    {
-        "updated",
-        NULL,
-        0
-    },
-    {
-        "name",
-        NULL,
-        0
-    },
-    {
-        "nicknames",
-        NULL,
-        0
-    },
-    {
-        "organizations",
-        NULL,
-        0
-    },
-    {
-        "speakToAs",
-        NULL,
-        0
-    },
-    {
-        "titles",
-        NULL,
-        0
-    },
-    {
-        "department",
-        NULL,
-        0
-    },
-    {
-        "emails",
-        NULL,
-        0
-    },
-    {
-        "onlineServices",
-        NULL,
-        0
-    },
-    {
-        "phones",
-        NULL,
-        0
-    },
-    {
-        "contactBy",
-        NULL,
-        0
-    },
-    {
-        "preferredLanguages",
-        NULL,
-        0
-    },
-    {
-        "calendars",
-        NULL,
-        0
-    },
-    {
-        "schedulingAddresses",
-        NULL,
-        0
-    },
-    {
-        "addresses",
-        NULL,
-        0
-    },
-    {
-        "cryptoKeys",
-        NULL,
-        0
-    },
-    {
-        "directories",
-        NULL,
-        0
-    },
-    {
-        "links",
-        NULL,
-        0
-    },
-    {
-        "media",
-        NULL,
-        0
-    },
-    {
-        "localizations",
-        NULL,
-        0
-    },
-    {
-        "anniversaries",
-        NULL,
-        0
-    },
-    {
-        "keywords",
-        NULL,
-        0
-    },
-    {
-        "notes",
-        NULL,
-        0
-    },
-    {
-        "personalInfo",
-        NULL,
-        0
-    },
-    {
-        "vCardProps",
-        NULL,
-        0
-    },
-
-    /* FM extensions */
-    {
-        "cyrusimap.org:importance",
-        JMAP_CONTACTS_EXTENSION,
-        0
-    },
-    {
-        "cyrusimap.org:blobId",
-        JMAP_CONTACTS_EXTENSION,
-        JMAP_PROP_SERVER_SET
-    },
-    {
-        "cyrusimap.org:size",
-        JMAP_CONTACTS_EXTENSION,
-        JMAP_PROP_SERVER_SET
-    },
-    {
-        "cyrusimap.org:href", 
-        JMAP_CONTACTS_EXTENSION,
-        JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE
-    },
-
-    /* Allow unknown properties */
-    {
-        "*",
-        NULL,
-        0
-    },
-
-    { NULL, NULL, 0 }
-};
-// clang-format on
-
 
 /*
  * ContactCard/get
@@ -6506,6 +6189,9 @@ static void _unmapped_param(json_t *obj,
 
     if (param_kind == VCARD_IANA_PARAMETER) {
         buf_setcstr(&buf, vcardparameter_get_iana_name(param));
+    }
+    else if (param_kind == VCARD_X_PARAMETER) {
+        buf_setcstr(&buf, vcardparameter_get_xname(param));
     }
     else {
         buf_setcstr(&buf, vcardparameter_kind_to_string(param_kind));
@@ -6872,7 +6558,7 @@ static void jscomps_from_vcard(json_t *obj, vcardproperty *prop,
 
         json_object_set_new(obj, "isOrdered", json_true());
 
-        sa = jscomps->field[0];
+        sa = vcardstructured_field_at(jscomps, 0);
         if (sa) {
             /* add default separator, if not " " */
             val = vcardstrarray_element_at(sa, 1);
@@ -6881,10 +6567,10 @@ static void jscomps_from_vcard(json_t *obj, vcardproperty *prop,
             }
         }
 
-        for (i = 1; i < jscomps->num_fields; i++) {
+        for (i = 1; i < vcardstructured_num_fields(jscomps); i++) {
             const char *kind;
 
-            sa = jscomps->field[i];
+            sa = vcardstructured_field_at(jscomps, i);
             val = vcardstrarray_element_at(sa, 0);
             if (*val == 's') {
                 kind = "separator";
@@ -6894,14 +6580,14 @@ static void jscomps_from_vcard(json_t *obj, vcardproperty *prop,
                 int field_idx = atoi(val);
                 int val_idx = 0;
 
-                if (field_idx >= (int) st->num_fields) continue;
+                if (field_idx >= (int) vcardstructured_num_fields(st)) continue;
 
                 kind = comp_kinds[field_idx].name;
 
                 if (vcardstrarray_size(sa) > 1)
                     val_idx = atoi(vcardstrarray_element_at(sa, 1));
 
-                val = vcardstrarray_element_at(st->field[field_idx], val_idx);
+                val = vcardstrarray_element_at(vcardstructured_field_at(st, field_idx), val_idx);
             }
 
             if (*val) {
@@ -6928,18 +6614,18 @@ static void jscomps_from_vcard(json_t *obj, vcardproperty *prop,
 
     /* Iterate through all components and values */
     for (const struct comp_kind *ckind = comp_kinds;
-         ckind->name && ckind->idx < st->num_fields; ckind++) {
-        if ((ckind->flags & FIELD_SKIP) && st->num_fields > ckind->alt_idx)
+         ckind->name && ckind->idx < vcardstructured_num_fields(st); ckind++) {
+        if ((ckind->flags & FIELD_SKIP) && vcardstructured_num_fields(st) > ckind->alt_idx)
             continue;
 
-        sa = st->field[ckind->idx];
+        sa = vcardstructured_field_at(st, ckind->idx);
         for (i = 0; sa && i < vcardstrarray_size(sa); i++) {
             val = vcardstrarray_element_at(sa, i);
 
             if (*val) {
                 /* Skip values that appear in other fields */
                 if (ckind->flags & FIELD_EXT) {
-                    vcardstrarray *alt_sa = st->field[ckind->alt_idx];
+                    vcardstrarray *alt_sa = vcardstructured_field_at(st, ckind->alt_idx);
                     if (alt_sa
                         && vcardstrarray_find(alt_sa, val)
                                < vcardstrarray_size(alt_sa))
@@ -7038,30 +6724,30 @@ static json_t *_jsonline_from_vcard(vcardproperty *prop,
         const char *val = vcardproperty_get_value_as_string(prop);
         if (!val) goto done;
 
-        vcardstructuredtype *stt = vcardstructured_from_string(val);
+        vcardstructuredtype *stt = vcardstructured_new_from_string(val);
         if (!stt) goto done;
 
         // At least one of user and uri must be set.
         const char *user = NULL, *uri = NULL;
-        if (stt->num_fields == 2) {
-            if (vcardstrarray_size(stt->field[0]) == 1) {
-                user = vcardstrarray_element_at(stt->field[0], 0);
+        if (vcardstructured_num_fields(stt) == 2) {
+            if (vcardstrarray_size(vcardstructured_field_at(stt, 0)) == 1) {
+                user = vcardstrarray_element_at(vcardstructured_field_at(stt, 0), 0);
                 if (!strlen(user)) user = NULL;
             }
-            if (vcardstrarray_size(stt->field[1]) == 1) {
-                uri = vcardstrarray_element_at(stt->field[1], 0);
+            if (vcardstrarray_size(vcardstructured_field_at(stt, 1)) == 1) {
+                uri = vcardstrarray_element_at(vcardstructured_field_at(stt, 1), 0);
                 if (!strlen(uri)) uri = NULL;
             }
         }
 
         if (!user && !uri) {
-            vcardstructured_free(stt);
+            vcardstructured_unref(stt);
             goto done;
         }
 
         // Convert OnlineService object.
         jprop = json_pack("{s:s* s:s*}", "user", user, "uri", uri);
-        vcardstructured_free(stt);
+        vcardstructured_unref(stt);
 
         *param_flags =
             ALLOW_TYPE_PARAM | ALLOW_PREF_PARAM | ALLOW_LABEL_PARAM |
@@ -7447,21 +7133,47 @@ static void jsprop_from_vcard(vcardproperty *prop, json_t *obj,
         if (param) {
             vcardstrarray *sorts = vcardparameter_get_sortas(param);
             json_t *sortas = json_object();
-            const struct comp_kind *ckind;
 
-            for (ckind = n_comp_kinds; ckind->name; ckind++) {
-                if (ckind->idx < vcardstrarray_size(sorts)) {
-                    const char *val =
-                        vcardstrarray_element_at(sorts, ckind->idx);
+            if (vcardstrarray_size(sorts) <= vcardstructured_num_fields(n)) {
+                const struct comp_kind *ckind;
+                for (ckind = n_comp_kinds; ckind->name; ckind++) {
+                    if (ckind->idx < vcardstrarray_size(sorts)) {
+                        const char *val =
+                            vcardstrarray_element_at(sorts, ckind->idx);
 
-                    if (*val) {
+                        if (!*val) continue;
+
+                        // Sanity-check the SORT-AS parameter:
+                        // If it sets a component to sort by, then that
+                        // component must also be set in the N property.
+                        bool have_ncomp = false;
+
+                        if (ckind->idx < vcardstructured_num_fields(n)) {
+                            vcardstrarray *ncomp = vcardstructured_field_at(n, ckind->idx);
+                            const char *nval = vcardstrarray_element_at(ncomp, 0);
+                            if (nval && *nval) {
+                                have_ncomp = true;
+                            }
+                        }
+
+                        if (!have_ncomp) {
+                            // Bogus SORT-AS parameter. Ignore it.
+                            json_decref(sortas);
+                            sortas = NULL;
+                            break;
+                        }
+
                         json_object_set_new(sortas,
                                             ckind->name, jmap_utf8string(val));
                     }
                 }
             }
 
-            json_object_set_new(jprop, "sortAs", sortas);
+            if (json_object_size(sortas)) {
+                json_object_set(jprop, "sortAs", sortas);
+            }
+
+            json_decref(sortas);
 
             /* Remove SORT-AS parameter */
             vcardproperty_remove_parameter_by_ref(prop, param);
@@ -7911,7 +7623,10 @@ static void jsprop_from_vcard(vcardproperty *prop, json_t *obj,
             char *param_str = vcardparameter_as_vcard_string(param);
             char *param_value = strchr(param_str, '=') + 1;
 
-            buf_setcstr(crock->buf, vcardparameter_kind_to_string(param_kind));
+            if (param_kind == VCARD_X_PARAMETER) 
+                buf_setcstr(crock->buf, vcardparameter_get_xname(param));
+            else
+                buf_setcstr(crock->buf, vcardparameter_kind_to_string(param_kind));
 
             if (param_kind == VCARD_VALUE_PARAMETER) {
                 type = lcase(param_value);
@@ -8280,6 +7995,38 @@ static json_t *jmap_card_from_vcard(const char *userid,
         if (buf_len(&buf)) val = strtod(buf_cstring(&buf), NULL);
 
         json_object_set_new(jcard, "cyrusimap.org:importance", json_real(val));
+    }
+
+    /* Sanity check some properties */
+    json_t *jprop = json_object_get(jcard, "name");
+    if (jprop &&
+        /* Need at least one of the following, otherwise remove it */
+        !json_object_get(jprop, "components") &&
+        !json_object_get(jprop, "full")) {
+        json_object_del(jcard, "name");
+    }
+
+    jprop = json_object_get(jcard, "addresses");
+    if (jprop) {
+        const char *id;
+        json_t *adr;
+        void *tmp;
+
+        json_object_foreach_safe(jprop, tmp, id, adr) {
+            /* Need at least one of the following, otherwise remove it */
+            if (!json_object_get(adr, "components") &&
+                !json_object_get(adr, "countryCode") &&
+                !json_object_get(adr, "coordinates") &&
+                !json_object_get(adr, "timeZone") &&
+                !json_object_get(adr, "full")) {
+                json_object_del(jprop, id);
+            }
+        }
+
+        if (!json_object_size(jprop)) {
+            /* If no addresses, remove it */
+            json_object_del(jcard, "addresses");
+        }
     }
 
   done:
@@ -9612,6 +9359,7 @@ static void _vcardparams_to_prop(json_t *jparams, vcardproperty *prop)
 {
     const char *name;
     json_t *jval;
+    struct buf buf = BUF_INITIALIZER;
 
     json_object_foreach(jparams, name, jval) {
         vcardparameter *param;
@@ -9627,7 +9375,8 @@ static void _vcardparams_to_prop(json_t *jparams, vcardproperty *prop)
         case VCARD_NO_PARAMETER:
         case VCARD_IANA_PARAMETER:
             param = vcardparameter_new(VCARD_IANA_PARAMETER);
-            vcardparameter_set_iana_name(param, name);
+            buf_setcstr(&buf, name);
+            vcardparameter_set_iana_name(param, buf_ucase(&buf));
             break;
 
         default:
@@ -9653,6 +9402,8 @@ static void _vcardparams_to_prop(json_t *jparams, vcardproperty *prop)
 
         vcardproperty_add_parameter(prop, param);
     }
+
+    buf_free(&buf);
 }
 
 static unsigned _jsobject_to_card(struct jmap_parser *parser, json_t *obj,
@@ -9925,8 +9676,8 @@ static vcardproperty *_jscomps_to_vcard(struct jmap_parser *parser, json_t *obj,
         return 0;
     }
 
-    vcardstructuredtype vals = { args->num_comps, { 0 } };
-    vcardstructuredtype ph = { args->num_comps, { 0 } };
+    vcardstructuredtype *vals = vcardstructured_new(args->num_comps);
+    vcardstructuredtype *ph = vcardstructured_new(args->num_comps);
     size_t i, size = json_array_size(comps);
     vcardstructuredtype *jscomps = NULL;
     vcardproperty *prop = NULL;
@@ -9956,9 +9707,7 @@ static vcardproperty *_jscomps_to_vcard(struct jmap_parser *parser, json_t *obj,
     }
 
     if (isordered) {
-        jscomps = xzmalloc(sizeof(vcardstructuredtype));
-
-        jscomps->num_fields = 1; // for separator, regardless if specified
+        jscomps = vcardstructured_new(1); // for separator, regardless if specified
 
         jprop = json_object_get(obj, "defaultSeparator");
         if (json_is_string(jprop)) {
@@ -9969,7 +9718,7 @@ static vcardproperty *_jscomps_to_vcard(struct jmap_parser *parser, json_t *obj,
                 entry = vcardstrarray_new(2);
                 vcardstrarray_append(entry, "s");
                 vcardstrarray_append(entry, defsep);
-                jscomps->field[0] = entry;
+                vcardstructured_set_field_at(jscomps, 0, entry);
             }
         }
         else if (jprop) {
@@ -10031,7 +9780,8 @@ static vcardproperty *_jscomps_to_vcard(struct jmap_parser *parser, json_t *obj,
                 entry = vcardstrarray_new(2);
                 vcardstrarray_append(entry, "s");
                 vcardstrarray_append(entry, buf_cstring(&buf));
-                jscomps->field[jscomps->num_fields++] = entry;
+                vcardstructured_set_field_at(jscomps,
+                        vcardstructured_num_fields(jscomps), entry);
             }
             else {
                 jmap_parser_invalid(parser, "kind");
@@ -10041,7 +9791,7 @@ static vcardproperty *_jscomps_to_vcard(struct jmap_parser *parser, json_t *obj,
         else {
             const struct comp_kind *ckind =
                 _field_name_to_kind(kind, args->comp_kinds);
-            vcardstrarray **field;
+            vcardstrarray *field;
 
             if (!ckind) {
                 jmap_parser_pop(parser);
@@ -10051,15 +9801,21 @@ static vcardproperty *_jscomps_to_vcard(struct jmap_parser *parser, json_t *obj,
 
             /* Add phonetic to proper field */
             if (phonetic) {
-                field = &ph.field[ckind->idx];
-                if (!*field) *field = vcardstrarray_new(1);
-                vcardstrarray_append(*field, phonetic);
+                field = vcardstructured_field_at(ph, ckind->idx);
+                if (!field) {
+                    field = vcardstrarray_new(1);
+                    vcardstructured_set_field_at(ph, ckind->idx, field);
+                }
+                vcardstrarray_append(field, phonetic);
             }
 
             /* Add value to proper field */
-            field = &vals.field[ckind->idx];
-            if (!*field) *field = vcardstrarray_new(1);
-            vcardstrarray_append(*field, val);
+            field = vcardstructured_field_at(vals, ckind->idx);
+            if (!field) {
+                field = vcardstrarray_new(1);
+                vcardstructured_set_field_at(vals, ckind->idx, field);
+            }
+            vcardstrarray_append(field, val);
 
             if (isordered) {
                 /* Add positional entry (field idx [value idx]) to JSCOMPS */
@@ -10067,12 +9823,13 @@ static vcardproperty *_jscomps_to_vcard(struct jmap_parser *parser, json_t *obj,
                 buf_reset(&buf);
                 buf_printf(&buf, "%d", ckind->idx);
                 vcardstrarray_append(entry, buf_cstring(&buf));
-                if (vcardstrarray_size(*field) > 1) {
+                if (vcardstrarray_size(field) > 1) {
                     buf_reset(&buf);
-                    buf_printf(&buf, "%lu", vcardstrarray_size(*field) - 1);
+                    buf_printf(&buf, "%lu", vcardstrarray_size(field) - 1);
                     vcardstrarray_append(entry, buf_cstring(&buf));
                 }
-                jscomps->field[jscomps->num_fields++] = entry;
+                vcardstructured_set_field_at(jscomps,
+                        vcardstructured_num_fields(jscomps), entry);
             }
 
             if (args->derived) {
@@ -10084,9 +9841,12 @@ static vcardproperty *_jscomps_to_vcard(struct jmap_parser *parser, json_t *obj,
 
             /* Also add values from ext fields to backward-compat fields */
             if (ckind->flags & FIELD_BWD) {
-                field = &vals.field[ckind->alt_idx];
-                if (!*field) *field = vcardstrarray_new(1);
-                vcardstrarray_append(*field, val);
+                field = vcardstructured_field_at(vals, ckind->alt_idx);
+                if (!field) {
+                    field = vcardstrarray_new(1);
+                    vcardstructured_set_field_at(vals, ckind->alt_idx, field);
+                }
+                vcardstrarray_append(field, val);
             }
         }
 
@@ -10098,7 +9858,7 @@ static vcardproperty *_jscomps_to_vcard(struct jmap_parser *parser, json_t *obj,
         goto fail;
     }
 
-    prop = args->vanew_prop(&vals,
+    prop = args->vanew_prop(vals,
                             jscomps ? vcardparameter_new_jscomps(jscomps) : NULL,
                             NULL);
 
@@ -10110,7 +9870,7 @@ static vcardproperty *_jscomps_to_vcard(struct jmap_parser *parser, json_t *obj,
 
         vcardparameter_set_value_from_string(param, ph_system);
         vcardcomponent_add_property(card,
-                                    args->vanew_prop(&ph,
+                                    args->vanew_prop(ph,
                                                      vcardparameter_new_altid(args->id),
                                                      param,
                                                      NULL));
@@ -10123,29 +9883,17 @@ static vcardproperty *_jscomps_to_vcard(struct jmap_parser *parser, json_t *obj,
 
     buf_free(&buf);
 
+    vcardstructured_unref(vals);
+    vcardstructured_unref(ph);
+    vcardstructured_unref(jscomps);
+
     return prop;
 
   fail:
-    for (unsigned i = 0; i < vals.num_fields; i++) {
-        vcardstrarray *sa = vals.field[i];
+    vcardstructured_unref(vals);
+    vcardstructured_unref(ph);
+    vcardstructured_unref(jscomps);
 
-        if (sa) vcardstrarray_free(sa);
-    }
-    if (ph_system) {
-        for (unsigned i = 0; i < ph.num_fields; i++) {
-            vcardstrarray *sa = ph.field[i];
-
-            if (sa) vcardstrarray_free(sa);
-        }
-    }
-    if (jscomps) {
-        for (unsigned i = 0; i < jscomps->num_fields; i++) {
-            vcardstrarray *sa = jscomps->field[i];
-
-            if (sa) vcardstrarray_free(sa);
-        }
-        free(jscomps);
-    }
     if (args->derived) {
         buf_reset(args->derived);
     }
@@ -10737,20 +10485,20 @@ static vcardproperty *_jsonline_to_vcard(struct jmap_parser *parser, json_t *obj
       json_object_del(jvcardparams, "x-user");
 
     } else {
-      // Use X-CYRUS-ONLINESERVICE in all other cases.
+        // Use X-CYRUS-ONLINESERVICE in all other cases.
+        vcardstructuredtype *st = vcardstructured_new(2);
+        vcardstrarray *field = vcardstrarray_new(1);
+        if (user) vcardstrarray_add(field, user);
+        vcardstructured_set_field_at(st, 0, field);
+
+        field = vcardstrarray_new(1);
+        if (uri) vcardstrarray_add(field, uri);
+        vcardstructured_set_field_at(st, 1, field);
+
         prop = vcardproperty_new(VCARD_X_PROPERTY);
         vcardproperty_set_x_name(prop, "X-CYRUS-ONLINESERVICE");
-        vcardproperty_set_value(prop, vcardvalue_new(VCARD_STRUCTURED_VALUE));
-
-        vcardstructuredtype *st =
-            vcardvalue_get_structured(vcardproperty_get_value(prop));
-        st->field[0] = vcardstrarray_new(1);
-        if (user)
-            vcardstrarray_add(st->field[0], user);
-        st->field[1] = vcardstrarray_new(1);
-        if (uri)
-            vcardstrarray_add(st->field[1], uri);
-        st->num_fields = 2;
+        vcardproperty_set_value(prop, vcardvalue_new_structured(st));
+        vcardstructured_unref(st);
 
         if (service) {
             vcardparameter *param = vcardparameter_new_x(service);
@@ -11512,8 +11260,7 @@ static unsigned _vcardprops_to_card(struct jmap_parser *parser, json_t *jprops,
 
         case JSON_ARRAY:
         // a structured value MUST be the only one & MUST NOT have too many comps
-        if (json_array_size(jprop) > 4 ||
-            json_array_size(jval) > VCARD_MAX_STRUCTURED_FIELDS) goto error;
+        if (json_array_size(jprop) > 4 || json_array_size(jval) > 20) goto error;
 
         default:
             break;
@@ -11540,7 +11287,7 @@ static unsigned _vcardprops_to_card(struct jmap_parser *parser, json_t *jprops,
         r = 1;
 
         if (json_is_array(jval)) {
-            vcardstructuredtype *st = vcardstructured_new();
+            vcardstructuredtype *st = vcardstructured_new(0);
             json_t *jcomp;
             size_t j;
 
@@ -11557,18 +11304,16 @@ static unsigned _vcardprops_to_card(struct jmap_parser *parser, json_t *jprops,
                 }
 
                 if (!vals) {
-                    vcardstructured_free(st);
+                    vcardstructured_unref(st);
                     goto error;
                 }
 
-                st->field[st->num_fields++] = vals;
+                vcardstructured_set_field_at(st,
+                        vcardstructured_num_fields(st), vals);
             }
 
             vcardproperty_set_value(prop, vcardvalue_new_structured(st));
-
-            // don't free strarrays which have been stolen by the vcardvalue
-            st->num_fields = 0;
-            vcardstructured_free(st);
+            vcardstructured_unref(st);
         }
         else if (val_type) {
             vals = jprop_values_to_strarray(jprop, 3, val_type, &buf);
@@ -11977,6 +11722,7 @@ static int _jscard_to_vcard(struct jmap_req *req,
         /* Address and Location properties */
         else if (!strcmp(mykey, "addresses")) {
             struct param_prop_t addr_props[] = {
+                { "label",       VCARD_X_PARAMETER     },
                 { "pref",        VCARD_PREF_PARAMETER  },
                 { "contexts",    VCARD_TYPE_PARAMETER  },
                 { "timeZone",    VCARD_TZ_PARAMETER    },
@@ -12112,16 +11858,19 @@ static int _jscard_to_vcard(struct jmap_req *req,
         }
 
         else {
-            int i;
-
             /* Known property with wrong case is invalid */
-            for (i = 0; card_props[i].name; i++) {
-                if (!strcasecmp(mykey, card_props[i].name)) {
+            unsigned i;
+            for (i = card_props.map->min_hash;
+                 i <= card_props.map->max_hash;
+                 i++) {
+                const jmap_property_t *prop = &card_props.map->array[i];
+
+                if (!strcasecmpsafe(mykey, prop->name)) {
                     jmap_parser_invalid(&parser, mykey);
                 }
             }
 
-            if (!card_props[i].name) {
+            if (i > card_props.map->max_hash) {
                 _jsunknown_to_vcard(&parser, mykey, jval, NULL, card);
             }
         }
@@ -12517,7 +12266,7 @@ static int _card_set_update(jmap_req_t *req, bool apply_empty_updates,
     int needrights = required_set_rights(jcard);
 
     int rights = mbentry ? jmap_myrights_mbentry(req, mbentry) : 0;
-    if ((rights & needrights) != needrights) {
+    if (!mbentry || (rights & needrights) != needrights) {
         r = (rights & JACL_READITEMS) ? HTTP_NOT_ALLOWED : HTTP_NOT_FOUND;
         goto done;
     }
@@ -12583,6 +12332,11 @@ static int _card_set_update(jmap_req_t *req, bool apply_empty_updates,
     }
 
     if (num_props) {
+        /* Always work with a v4 card so we have "clean" MEMBER properties */
+        if (cdata->version == 3) {
+            vcardcomponent_transform(vcard, VCARD_VERSION_40);
+        }
+
         /* Convert the vCard to a JSContact Card. */
         json_t *old_obj = jmap_card_from_vcard(req->userid, vcard,
                                                db, *mailbox, &record,
@@ -12781,17 +12535,22 @@ static json_t *_card_from_record(jmap_req_t *req,
 
     if (!vcard) return NULL;
 
-    /* Patch JMAP event */
     json_t *jcard = jmap_card_from_vcard(req->userid, vcard, db, mailbox, record,
-                                         IGNORE_VCARD_VERSION);
+                                         IGNORE_VCARD_VERSION | SET_VCARD_CONVPROPS);
     vcardcomponent_free(vcard);
 
     if (jcard && strstr(req->method, "/copy")) {
-        json_t *media = json_object_get(jcard, "media");
-        if (media) {
-            /* _blob_to_card() needs to know in which account to find blobs */
-            json_object_set(media, "accountId",
-                            json_object_get(req->args, "fromAccountId"));
+        /* jsresource_to_vcard() needs to know in which account to find blobs */
+        static const char *types_with_blobid[] = { "media", "cryptoKeys", NULL };
+        json_t *fromAccountId = json_object_get(req->args, "fromAccountId");
+
+        for (const char **type = types_with_blobid; *type; type++) {
+            const char *key;
+            json_t *jval;
+
+            json_object_foreach(json_object_get(jcard, *type), key, jval) {
+                json_object_set(jval, "accountId", fromAccountId);
+            }
         }
 
         // immutable and WILL change
@@ -12803,7 +12562,7 @@ static json_t *_card_from_record(jmap_req_t *req,
 
 static int jmap_card_get(struct jmap_req *req)
 {
-    return _contacts_get(req, &getcards_cb, CARDDAV_KIND_ANY, card_props);
+    return _contacts_get(req, &getcards_cb, CARDDAV_KIND_ANY, &card_props);
 }
 
 static int jmap_card_changes(struct jmap_req *req)
@@ -12844,7 +12603,7 @@ done:
 
 static int jmap_card_set(struct jmap_req *req)
 {
-    _contacts_set(req, CARDDAV_KIND_ANY, card_props,
+    _contacts_set(req, CARDDAV_KIND_ANY, &card_props,
                   &_card_set_create, &_card_set_update);
 
     return 0;

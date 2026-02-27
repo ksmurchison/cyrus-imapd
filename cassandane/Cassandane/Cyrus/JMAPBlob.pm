@@ -69,6 +69,6 @@ sub new
     }, @args);
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/JMAPBlob';
+use Cassandane::Tiny::Loader;
 
 1;

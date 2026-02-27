@@ -11,5 +11,18 @@ xsutil.c                Callback and utility functions for Cyrus interface
 typemap                 Typemap defining IMAP_Cyrus Perl "class"
 cyradm.sh               Shell script wrapper for Cyrus::IMAP::Shell
 examples/auditmbox.pl   (lame) Example of Cyrus::IMAP::Admin
+lib/Cyrus/AccountSync.pm    Tool to manage cyrus users via repliation protocol mapping to Apple's test data format
+lib/Cyrus/CacheFile.pm      Interface to the cyrus.cache data format
+lib/Cyrus/Backup.pm         Tooling for Fastmail style backups
+lib/Cyrus/Backup/Tar.pm     Tar file management for Fastmail style backups
+lib/Cyrus/Backup/State.pm   State file (sqlite) management for Fastmail style backups
+lib/Cyrus/Backup/Restore.pm Restoration support for Fastmail style backups
+lib/Cyrus/DList.pm          Perl library for the DList data format used in Cyrus
+lib/Cyrus/HeaderFile.pm     Interface to the cyrus.header data format
+lib/Cyrus/ImapClone.pm      Tool to replicate from IMAP into Cyrus via repliation protocol
+lib/Cyrus/IndexFile.pm      Interface to the cyrus.index data format
+lib/Cyrus/Mbentry.pm        Interface to the mailboxes.db entry format
+lib/Cyrus/Mbname.pm         Methods for managing all the different mailbox name formats
+lib/Cyrus/SyncProto.pm      Wrapper for Cyrus replication protocol
 t/01-imclient.t         Test script for Cyrus::IMAP
 t/02-admin.t            (lame) Test script for Cyrus::IMAP::Admin

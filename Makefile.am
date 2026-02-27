@@ -352,7 +352,31 @@ EXTRA_DIST = \
     imap/http_cal_abook_admin.js \
     imap/http_err.et \
     imap/imap_err.et \
+    imap/jmap_blob_props.gperf \
+    imap/jmap_blob_upload_props.gperf \
+    imap/jmap_calendar_event_notification_props.gperf \
+    imap/jmap_calendar_event_props.gperf \
+    imap/jmap_calendar_participant_identity_props.gperf \
+    imap/jmap_calendar_preferences_props.gperf \
+    imap/jmap_calendar_principal_props.gperf \
+    imap/jmap_calendar_props.gperf \
+    imap/jmap_calendar_share_notification_props.gperf \
+    imap/jmap_contact_addressbook_props.gperf \
+    imap/jmap_contact_card_props.gperf \
+    imap/jmap_contact_group_props.gperf \
+    imap/jmap_contact_props.gperf \
+    imap/jmap_core_usercounters_props.gperf \
     imap/jmap_err.et \
+    imap/jmap_mailbox_props.gperf \
+    imap/jmap_mail_props.gperf \
+    imap/jmap_mail_submission_identity_props.gperf \
+    imap/jmap_mail_submission_props.gperf \
+    imap/jmap_mail_thread_props.gperf \
+    imap/jmap_notes_props.gperf \
+    imap/jmap_quota_legacy_props.gperf \
+    imap/jmap_quota_props.gperf \
+    imap/jmap_sieve_props.gperf \
+    imap/jmap_vacation_props.gperf \
     imap/lmtp_err.et \
     imap/mailbox_header_cache.gperf \
     imap/mupdate_err.et \
@@ -508,6 +532,7 @@ dist_noinst_SCRIPTS = \
     tools/config2sample \
     tools/fixsearchpath.pl \
     tools/git-version.sh \
+    tools/gperf-build-prop-set.pl \
     tools/masssievec \
     tools/mkimap \
     tools/mknewsgroups \
@@ -1310,8 +1335,56 @@ imap_httpd_LDADD = $(LD_SIEVE_ADD) $(LD_SERVER_ADD)
 
 if JMAP
 BUILT_SOURCES += \
+    imap/jmap_blob_props.c \
+    imap/jmap_blob_props.h \
+    imap/jmap_blob_upload_props.c \
+    imap/jmap_blob_upload_props.h \
+    imap/jmap_calendar_event_notification_props.c \
+    imap/jmap_calendar_event_notification_props.h \
+    imap/jmap_calendar_event_props.c \
+    imap/jmap_calendar_event_props.h \
+    imap/jmap_calendar_participant_identity_props.c \
+    imap/jmap_calendar_participant_identity_props.h \
+    imap/jmap_calendar_preferences_props.c \
+    imap/jmap_calendar_preferences_props.h \
+    imap/jmap_calendar_principal_props.c \
+    imap/jmap_calendar_principal_props.h \
+    imap/jmap_calendar_props.c \
+    imap/jmap_calendar_props.h \
+    imap/jmap_calendar_share_notification_props.c \
+    imap/jmap_calendar_share_notification_props.h \
+    imap/jmap_contact_addressbook_props.c \
+    imap/jmap_contact_addressbook_props.h \
+    imap/jmap_contact_card_props.c \
+    imap/jmap_contact_card_props.h \
+    imap/jmap_contact_group_props.c \
+    imap/jmap_contact_group_props.h \
+    imap/jmap_contact_props.c \
+    imap/jmap_contact_props.h \
+    imap/jmap_core_usercounters_props.c \
+    imap/jmap_core_usercounters_props.h \
     imap/jmap_err.c \
-    imap/jmap_err.h
+    imap/jmap_err.h \
+    imap/jmap_mailbox_props.c \
+    imap/jmap_mailbox_props.h \
+    imap/jmap_mail_props.c \
+    imap/jmap_mail_props.h \
+    imap/jmap_mail_submission_identity_props.c \
+    imap/jmap_mail_submission_identity_props.h \
+    imap/jmap_mail_submission_props.c \
+    imap/jmap_mail_submission_props.h \
+    imap/jmap_mail_thread_props.c \
+    imap/jmap_mail_thread_props.h \
+    imap/jmap_notes_props.c \
+    imap/jmap_notes_props.h \
+    imap/jmap_quota_legacy_props.c \
+    imap/jmap_quota_legacy_props.h \
+    imap/jmap_quota_props.c \
+    imap/jmap_quota_props.h \
+    imap/jmap_sieve_props.c \
+    imap/jmap_sieve_props.h \
+    imap/jmap_vacation_props.c \
+    imap/jmap_vacation_props.h
 
 imap_httpd_SOURCES += \
     imap/defaultalarms.c \
@@ -1322,13 +1395,14 @@ imap_httpd_SOURCES += \
     imap/jmap_api.c \
     imap/jmap_api.h \
     imap/jmap_backup.c \
+    imap/jmap_blob.c \
     imap/jmap_calendar.c \
     imap/jmap_calendar.h \
     imap/jmap_contact.c \
-    imap/jmap_blob.c \
     imap/jmap_core.c \
     imap/jmap_ical.c \
     imap/jmap_ical.h \
+    imap/jmap_mailbox.c \
     imap/jmap_mail.c \
     imap/jmap_mail.h \
     imap/jmap_mail_query.c \
@@ -1336,7 +1410,6 @@ imap_httpd_SOURCES += \
     imap/jmap_mail_query_parse.c \
     imap/jmap_mail_query_parse.h \
     imap/jmap_mail_submission.c \
-    imap/jmap_mailbox.c \
     imap/jmap_mdn.c \
     imap/jmap_notes.c \
     imap/jmap_notif.c \
@@ -1347,10 +1420,44 @@ imap_httpd_SOURCES += \
     imap/jmap_util.c \
     imap/jmap_util.h
 
+imap_httpd_LDADD += imap/libcyrus_jmap_props.la
+noinst_LTLIBRARIES += imap/libcyrus_jmap_props.la
+
+imap_libcyrus_jmap_props_la_LIBADD =
+imap_libcyrus_jmap_props_la_CFLAGS = $(AM_CFLAGS) $(CFLAG_VISIBILITY) $(NOWARN_UNUSED_PARAMETER)
+
+imap_libcyrus_jmap_props_la_SOURCES = \
+    imap/jmap_blob_props.c \
+    imap/jmap_blob_upload_props.c \
+    imap/jmap_calendar_event_notification_props.c \
+    imap/jmap_calendar_event_props.c \
+    imap/jmap_calendar_participant_identity_props.c \
+    imap/jmap_calendar_preferences_props.c \
+    imap/jmap_calendar_principal_props.c \
+    imap/jmap_calendar_props.c \
+    imap/jmap_calendar_share_notification_props.c \
+    imap/jmap_contact_addressbook_props.c \
+    imap/jmap_contact_card_props.c \
+    imap/jmap_contact_group_props.c \
+    imap/jmap_contact_props.c \
+    imap/jmap_core_usercounters_props.c \
+    imap/jmap_mail_props.c \
+    imap/jmap_mail_submission_identity_props.c \
+    imap/jmap_mail_submission_props.c \
+    imap/jmap_mail_thread_props.c \
+    imap/jmap_mailbox_props.c \
+    imap/jmap_notes_props.c \
+    imap/jmap_quota_legacy_props.c \
+    imap/jmap_quota_props.c
+
 if SIEVE
 imap_httpd_SOURCES += \
     imap/jmap_sieve.c \
     imap/jmap_vacation.c
+
+imap_libcyrus_jmap_props_la_SOURCES += \
+    imap/jmap_sieve_props.c \
+    imap/jmap_vacation_props.c
 endif
 
 nodist_imap_httpd_SOURCES += \
@@ -1447,6 +1554,12 @@ imap_unexpunge_LDADD = $(LD_UTILITY_ADD)
 # so do a tricky directory change
 %_err.h %_err.c: %_err.et $(COMPILE_ET_DEP)
 	$(AM_V_GEN)(cd $(@D) && $(COMPILE_ET) $(realpath $<))
+
+%_props.c: %_props.gperf
+	$(AM_V_GEN)gperf $< > $@.NEW && mv $@.NEW $@
+
+%_props.h: %_props.gperf $(top_srcdir)/tools/gperf-build-prop-set.pl
+	$(AM_V_GEN)$(top_srcdir)/tools/gperf-build-prop-set.pl $< > $@.NEW && mv $@.NEW $@
 
 if HAVE_XXD
 # xxd cannot have path details in its input filename, otherwise it junks up
@@ -1912,11 +2025,11 @@ snapshot::
 	tar -C snapshot -c -f - $(PACKAGE_NAME)-$(PACKAGE_VERSION) | gzip -9 > $(PACKAGE_NAME)-$(PACKAGE_VERSION).tar.gz
 	@rm -rf snapshot
 
-docsrc/imap/reference/manpages/systemcommands/cyradm.rst: $(top_srcdir)/perl/imap/IMAP/Shell.pm
+docsrc/reference/manpages/systemcommands/cyradm.rst: $(top_srcdir)/perl/imap/IMAP/Shell.pm
 	@$(MKDIR_P) $(@D)
 	$(AM_V_GEN)$(top_srcdir)/tools/perl2rst cyradm < $< > $@.NEW && mv $@.NEW $@
 
-docsrc/imap/reference/manpages/configs/imapd.conf.rst: $(top_srcdir)/tools/config2rst $(top_srcdir)/lib/imapoptions
+docsrc/reference/manpages/configs/imapd.conf.rst: $(top_srcdir)/tools/config2rst $(top_srcdir)/lib/imapoptions
 	@$(MKDIR_P) $(@D)
 	$(AM_V_GEN)$(top_srcdir)/tools/config2rst $(top_srcdir)/lib/imapoptions > $@
 
@@ -1924,7 +2037,7 @@ doc/examples/imapd_conf/imapd.conf.sample: $(top_srcdir)/tools/config2sample $(t
 	@$(MKDIR_P) $(@D)
 	$(AM_V_GEN)$(top_srcdir)/tools/config2sample $(top_srcdir)/lib/imapoptions > $@
 
-docsrc/imap/reference/manpages/usercommands/sieveshell.rst: $(top_srcdir)/perl/sieve/scripts/sieveshell.pl
+docsrc/reference/manpages/usercommands/sieveshell.rst: $(top_srcdir)/perl/sieve/scripts/sieveshell.pl
 	@$(MKDIR_P) $(@D)
 	$(AM_V_GEN)$(top_srcdir)/tools/perl2rst sieveshell < $< > $@.NEW && mv $@.NEW $@
 
@@ -1958,7 +2071,7 @@ SPHINX_OPTS = -d $(SPHINX_CACHE) -n -q $(SPHINX_FAIL_ON_WARNINGS)
 ## detect when source directory is not build directory (i.e. VPATH
 ## build), and clone the docsrc tree into the build directory, so
 ## that we have a single "source directory" for sphinx-build to use.
-docsrc/.sphinx-build.stamp: docsrc/imap/reference/manpages/configs/imapd.conf.rst docsrc/imap/reference/manpages/systemcommands/cyradm.rst docsrc/imap/reference/manpages/usercommands/sieveshell.rst
+docsrc/.sphinx-build.stamp: docsrc/reference/manpages/configs/imapd.conf.rst docsrc/reference/manpages/systemcommands/cyradm.rst docsrc/reference/manpages/usercommands/sieveshell.rst
 	$(AM_V_GEN)test x"$(top_srcdir)" = x"$(top_builddir)" || \
         (cd $(top_srcdir) && tar cf - --mode=gu+w docsrc doc/examples) | tar xf -
 	@touch $@

@@ -5416,6 +5416,14 @@ EXPORTED int message_get_fname(message_t *m, const char **fnamep)
     return 0;
 }
 
+EXPORTED int message_get_mailbox(message_t *m, const struct mailbox **mboxp)
+{
+    int r = message_need(m, M_MAILBOX);
+    if (r) return r;
+    *mboxp = m->mailbox;
+    return 0;
+}
+
 /* XXX despite the name, this actually gives back ALL the values of the
  * XXX named header, unless flags contains MESSAGE_FIRST or MESSAGE_LAST
  */

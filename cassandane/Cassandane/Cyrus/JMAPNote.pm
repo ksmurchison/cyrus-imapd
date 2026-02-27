@@ -50,7 +50,7 @@ use Cwd qw(abs_path getcwd);
 use base qw(Cassandane::Cyrus::TestCase);
 use Cassandane::Util::Log;
 
-use lib '../perl/imap';
+use lib '../perl/imap/lib';
 use Cyrus::DList;
 
 use charnames ':full';
@@ -90,6 +90,6 @@ sub set_up
     }
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/JMAPNote';
+use Cassandane::Tiny::Loader;
 
 1;

@@ -1,0 +1,29 @@
+#!perl
+use Cassandane::Tiny;
+
+sub test_card_set_name_check_vcard_props ($self)
+{
+    my $user = $self->default_user;
+    my $carddav = $user->carddav;
+
+    my @cards = (
+        $user->contacts->create,
+        $user->contacts->create({
+            name => { full => 'Foo' }
+        }),
+        $user->contacts->create({
+            name => { components => [{ kind => 'given', value => 'Foo' }] }
+        }),
+    );
+
+    for my $card (@cards) {
+        # N and FN properties are mandatory in vCard v3.
+        my $v3card = $card->as_vcard3_struct;
+        $self->assert_not_null($v3card->{properties}{n});
+        $self->assert_not_null($v3card->{properties}{fn});
+
+        # FN property is mandatory in vCard v4.
+        my $v4card = $card->as_vcard4_struct;
+        $self->assert_not_null($v4card->{properties}{fn});
+    }
+}

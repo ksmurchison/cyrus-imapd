@@ -83,7 +83,7 @@ use Cassandane::Cassini;
 use Cassandane::PortManager;
 use Cassandane::BuildInfo;
 
-use lib '../perl/imap';
+use lib '../perl/imap/lib';
 require Cyrus::DList;
 
 my $__cached_rootdir;
@@ -3303,7 +3303,7 @@ my @DEFAULT_USING = qw(
 
     https://cyrusimap.org/ns/jmap/performance
     https://cyrusimap.org/ns/jmap/backup
-    https://cyrusimap.org/ns/jmap/blob
+    urn:ietf:params:jmap:blob
 );
 
 sub new_jmaptester_ws_for_user ($self, $user, $new_arg = undef) {

@@ -835,7 +835,7 @@ AC_COMPILE_IFELSE(
 CFLAGS="$saved_CFLAGS"
 AC_SUBST([NOWARN_SIGN_COMPARE])
 
-dnl look for an option to disable sign-comparison warnings (needed for
+dnl look for an option to disable unused-but-set-variable warnings (needed for
 dnl flex-generated sieve sources when building with -Werror)
 saved_CFLAGS="$CFLAGS"
 NOWARN_UNUSED_BUT_SET="-Wno-unused-but-set-variable"
@@ -849,6 +849,21 @@ AC_COMPILE_IFELSE(
 )
 CFLAGS="$saved_CFLAGS"
 AC_SUBST([NOWARN_UNUSED_BUT_SET])
+
+dnl look for an option to disable unused-parameter warnings
+dnl (needed for gperf-generated JMAP sources when building with -Werror)
+saved_CFLAGS="$CFLAGS"
+NOWARN_UNUSED_PARAMETER="-Wno-unused-parameter"
+CFLAGS="$NOWARN_UNUSED_PARAMETER"
+AC_MSG_CHECKING([whether the C compiler supports -Wno-unused-parameter])
+AC_COMPILE_IFELSE(
+    [AC_LANG_PROGRAM([], [])],
+    [AC_MSG_RESULT([yes])],
+    [NOWARN_UNUSED_PARAMETER=]
+    [AC_MSG_RESULT([no])]
+)
+CFLAGS="$saved_CFLAGS"
+AC_SUBST([NOWARN_UNUSED_PARAMETER])
 
 dnl for et routines
 AC_FUNC_CHECK(strerror,AC_DEFINE(HAS_STRERROR,[],[Do we have strerror()?]),
@@ -1888,19 +1903,19 @@ dnl Make sure perl modules are in the build directory (which isn't necessarily
 dnl the source directory)
     AC_CONFIG_LINKS([perl/sieve/managesieve/managesieve.pm:perl/sieve/managesieve/managesieve.pm])
     AC_CONFIG_FILES([perl/sieve/managesieve/MANIFEST])
-    AC_CONFIG_LINKS([perl/imap/Cyrus/AccountSync.pm:perl/imap/Cyrus/AccountSync.pm])
-    AC_CONFIG_LINKS([perl/imap/Cyrus/Backup.pm:perl/imap/Cyrus/Backup.pm])
-    AC_CONFIG_LINKS([perl/imap/Cyrus/Backup/State.pm:perl/imap/Cyrus/Backup/State.pm])
-    AC_CONFIG_LINKS([perl/imap/Cyrus/Backup/Restore.pm:perl/imap/Cyrus/Backup/Restore.pm])
-    AC_CONFIG_LINKS([perl/imap/Cyrus/Backup/Tar.pm:perl/imap/Cyrus/Backup/Tar.pm])
-    AC_CONFIG_LINKS([perl/imap/Cyrus/CacheFile.pm:perl/imap/Cyrus/CacheFile.pm])
-    AC_CONFIG_LINKS([perl/imap/Cyrus/DList.pm:perl/imap/Cyrus/DList.pm])
-    AC_CONFIG_LINKS([perl/imap/Cyrus/HeaderFile.pm:perl/imap/Cyrus/HeaderFile.pm])
-    AC_CONFIG_LINKS([perl/imap/Cyrus/ImapClone.pm:perl/imap/Cyrus/ImapClone.pm])
-    AC_CONFIG_LINKS([perl/imap/Cyrus/IndexFile.pm:perl/imap/Cyrus/IndexFile.pm])
-    AC_CONFIG_LINKS([perl/imap/Cyrus/Mbentry.pm:perl/imap/Cyrus/Mbentry.pm])
-    AC_CONFIG_LINKS([perl/imap/Cyrus/Mbname.pm:perl/imap/Cyrus/Mbname.pm])
-    AC_CONFIG_LINKS([perl/imap/Cyrus/SyncProto.pm:perl/imap/Cyrus/SyncProto.pm])
+    AC_CONFIG_LINKS([perl/imap/lib/Cyrus/AccountSync.pm:perl/imap/lib/Cyrus/AccountSync.pm])
+    AC_CONFIG_LINKS([perl/imap/lib/Cyrus/Backup.pm:perl/imap/lib/Cyrus/Backup.pm])
+    AC_CONFIG_LINKS([perl/imap/lib/Cyrus/Backup/State.pm:perl/imap/lib/Cyrus/Backup/State.pm])
+    AC_CONFIG_LINKS([perl/imap/lib/Cyrus/Backup/Restore.pm:perl/imap/lib/Cyrus/Backup/Restore.pm])
+    AC_CONFIG_LINKS([perl/imap/lib/Cyrus/Backup/Tar.pm:perl/imap/lib/Cyrus/Backup/Tar.pm])
+    AC_CONFIG_LINKS([perl/imap/lib/Cyrus/CacheFile.pm:perl/imap/lib/Cyrus/CacheFile.pm])
+    AC_CONFIG_LINKS([perl/imap/lib/Cyrus/DList.pm:perl/imap/lib/Cyrus/DList.pm])
+    AC_CONFIG_LINKS([perl/imap/lib/Cyrus/HeaderFile.pm:perl/imap/lib/Cyrus/HeaderFile.pm])
+    AC_CONFIG_LINKS([perl/imap/lib/Cyrus/ImapClone.pm:perl/imap/lib/Cyrus/ImapClone.pm])
+    AC_CONFIG_LINKS([perl/imap/lib/Cyrus/IndexFile.pm:perl/imap/lib/Cyrus/IndexFile.pm])
+    AC_CONFIG_LINKS([perl/imap/lib/Cyrus/Mbentry.pm:perl/imap/lib/Cyrus/Mbentry.pm])
+    AC_CONFIG_LINKS([perl/imap/lib/Cyrus/Mbname.pm:perl/imap/lib/Cyrus/Mbname.pm])
+    AC_CONFIG_LINKS([perl/imap/lib/Cyrus/SyncProto.pm:perl/imap/lib/Cyrus/SyncProto.pm])
     AC_CONFIG_LINKS([perl/imap/IMAP/Shell.pm:perl/imap/IMAP/Shell.pm])
     AC_CONFIG_LINKS([perl/imap/IMAP/Admin.pm:perl/imap/IMAP/Admin.pm])
     AC_CONFIG_LINKS([perl/imap/IMAP.pm:perl/imap/IMAP.pm])

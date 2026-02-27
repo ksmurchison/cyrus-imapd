@@ -18,6 +18,8 @@
 #include "imap/http_err.h"
 #include "imap/imap_err.h"
 #include "imap/jmap_err.h"
+#include "imap/jmap_blob_props.h"
+#include "imap/jmap_blob_upload_props.h"
 
 
 static int jmap_blob_copy(jmap_req_t *req);
@@ -57,29 +59,6 @@ static jmap_method_t jmap_blob_methods_standard[] = {
 };
 // clang-format on
 
-// clang-format off
-static jmap_method_t jmap_core_methods_nonstandard[] = {
-    {
-        "Blob/get",
-        JMAP_BLOB_EXTENSION,
-        &jmap_blob_get,
-        JMAP_NEED_CSTATE
-    },
-    {
-        "Blob/lookup",
-        JMAP_BLOB_EXTENSION,
-        &jmap_blob_lookup,
-        JMAP_NEED_CSTATE
-    },
-    {
-        "Blob/upload",
-        JMAP_BLOB_EXTENSION,
-        &jmap_blob_upload,
-        JMAP_NEED_CSTATE | JMAP_READ_WRITE
-    },
-    { NULL, NULL, NULL, 0}
-};
-// clang-format on
 
 static json_t *blob_capabilities = NULL;
 
@@ -111,33 +90,11 @@ HIDDEN void jmap_blob_init(jmap_settings_t *settings)
                         JMAP_URN_BLOB, json_object());
 
     jmap_add_methods(jmap_blob_methods_standard, settings);
-
-    if (config_getswitch(IMAPOPT_JMAP_NONSTANDARD_EXTENSIONS)) {
-        json_object_set_new(settings->server_capabilities,
-                JMAP_BLOB_EXTENSION,
-                json_pack("{s:i, s:i, s:O, s:O}",
-                    "maxSizeBlobSet",
-                    settings->limits[MAX_SIZE_BLOB_SET] / 1024,
-                    "maxCatenateItems",
-                    settings->limits[MAX_CATENATE_ITEMS],
-                    "supportedTypeNames",
-                    typenames,
-                    "supportedDigestAlgorithms",
-                    algorithms));
-
-        jmap_add_methods(jmap_core_methods_nonstandard, settings);
-    }
-
 }
 
 HIDDEN void jmap_blob_capabilities(json_t *account_capabilities)
 {
     json_object_set(account_capabilities, JMAP_URN_BLOB, blob_capabilities);
-
-    if (config_getswitch(IMAPOPT_JMAP_NONSTANDARD_EXTENSIONS)) {
-        json_object_set_new(account_capabilities,
-                JMAP_BLOB_EXTENSION, json_object());
-    }
 }
 
 static int jmap_copyblob(jmap_req_t *req,
@@ -176,7 +133,6 @@ static int jmap_copyblob(jmap_req_t *req,
         fwrite(buf_base(&msg_buf), buf_len(&msg_buf), 1, to_fp);
     }
     if (fflush(to_fp) || ferror(to_fp) || fdatasync(fileno(to_fp))) {
-        fclose(to_fp);
         syslog(LOG_ERR, "jmap_copyblob(%s): tofp=%s: %s",
                blobid, append_stagefname(stage), strerror(errno));
         r = IMAP_IOERROR;
@@ -317,47 +273,6 @@ static int getblob_cb(const conv_guidrec_t* rec, void* vrock)
     return 0;
 }
 
-// clang-format off
-static const jmap_property_t blob_xprops[] = {
-    {
-        "data",
-        NULL,
-        JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE
-    },
-    {
-        "data:asBase64",
-        NULL,
-        JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE | JMAP_PROP_SKIP_GET
-    },
-    {
-        "data:asText",
-        NULL,
-        JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE | JMAP_PROP_SKIP_GET
-    },
-    {
-        "digest:md5",
-        NULL,
-        JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE | JMAP_PROP_SKIP_GET
-    },
-    {
-        "digest:sha",
-        NULL,
-        JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE | JMAP_PROP_SKIP_GET
-    },
-    {
-        "digest:sha-256",
-        NULL,
-        JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE | JMAP_PROP_SKIP_GET
-    },
-    {
-        "size",
-        NULL,
-        JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE
-    },
-    { NULL, NULL, 0 }
-};
-// clang-format on
-
 struct blob_range {
     size_t offset;
     size_t length;
@@ -404,7 +319,7 @@ static int jmap_blob_get(jmap_req_t *req)
 
     /* Parse request */
     struct blob_range range = { 0, 0 };
-    jmap_get_parse(req, &parser, blob_xprops, /*allow_null_ids*/0,
+    jmap_get_parse(req, &parser, &blob_props, /*allow_null_ids*/0,
                    &_parse_range, &range, &get, &err);
     if (err) {
         jmap_error(req, err);
@@ -562,9 +477,7 @@ static int _parse_datatypes(jmap_req_t *req __attribute__((unused)),
 {
     int32_t *datatypesp = rock;
 
-    // support both "types" and "typeNames" selectors for now
-    if (!strcmp(key, "typeNames") ||
-        (jmap_is_using(req, JMAP_BLOB_EXTENSION) && !strcmp(key, "types"))) {
+    if (!strcmp(key, "typeNames")) {
         if (!json_is_array(arg)) {
             jmap_parser_invalid(parser, key);
             // field known, type wrong
@@ -884,28 +797,6 @@ done:
     return 0;
 }
 
-// clang-format off
-static const jmap_property_t blob_upload_props[] = {
-    {
-        "id",
-        NULL,
-        JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE | JMAP_PROP_ALWAYS_GET
-    },
-    {
-        "data",
-        NULL,
-        0
-    },
-    {
-        "type",
-        NULL,
-        0
-    },
-
-    { NULL, NULL, 0 }
-};
-// clang-format on
-
 static int _set_arg_to_buf(struct jmap_req *req, struct buf *buf, json_t *arg, int recurse, json_t **errp)
 {
     json_t *jitem;
@@ -981,28 +872,6 @@ static int _set_arg_to_buf(struct jmap_req *req, struct buf *buf, json_t *arg, i
             }
         }
     }
-    else if (jmap_is_using(req, JMAP_BLOB_EXTENSION)) {
-        jitem = json_object_get(arg, "catenate");
-        if (JNOTNULL(jitem) && json_is_array(jitem)) {
-            if (seen_one++) return IMAP_MAILBOX_EXISTS;
-            size_t limit = config_getint(IMAPOPT_JMAP_MAX_CATENATE_ITEMS);
-            if (json_array_size(jitem) > limit) {
-                *errp = json_string("too many catenate items");
-                return IMAP_QUOTA_EXCEEDED;
-            }
-            size_t i;
-            json_t *val;
-            json_array_foreach(jitem, i, val) {
-                struct buf subbuf = BUF_INITIALIZER;
-                // XXX: we might need to validate the properties here too?
-                int r = _set_arg_to_buf(req, &subbuf, val, 1, errp);
-                buf_appendmap(buf, buf_base(&subbuf), buf_len(&subbuf));
-                buf_free(&subbuf);
-                if (*errp) return r; // exact code doesn't matter, err will be checked
-                if (r) return r;
-            }
-        }
-    }
 
     return 0;
 }
@@ -1040,7 +909,7 @@ static int jmap_blob_upload(struct jmap_req *req)
     time_t now = time(NULL);
 
     /* Parse arguments */
-    jmap_set_parse(req, &parser, blob_upload_props, NULL, NULL, &set, &jerr);
+    jmap_set_parse(req, &parser, &blob_upload_props, NULL, NULL, &set, &jerr);
     if (jerr) {
         jmap_error(req, jerr);
         goto done;

@@ -52,7 +52,7 @@ use Cwd qw(abs_path getcwd);
 use base qw(Cassandane::Cyrus::TestCase);
 use Cassandane::Util::Log;
 
-use lib '../perl/imap';
+use lib '../perl/imap/lib';
 use Cyrus::DList;
 
 use charnames ':full';
@@ -151,6 +151,6 @@ sub _check_counts
     }
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/JMAPMailbox';
+use Cassandane::Tiny::Loader;
 
 1;

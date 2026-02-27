@@ -13,7 +13,7 @@ BEGIN:VCARD
 VERSION:3.0
 PRODID:-//CyrusIMAP.org//Cyrus//EN
 UID:123456789
-EMAIL;TYPE=work:benoît@local
+EMAIL;PROP-ID=e1;TYPE=work:benoît@local
 FN:Test
 N:Test;;;;
 REV:20200708T081725Z

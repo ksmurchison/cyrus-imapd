@@ -9,7 +9,7 @@ use Data::UUID;
 sub test_email_set_create_encoding ($self)
 {
     my $jmap = $self->{jmap};
-    $jmap->AddUsing('https://cyrusimap.org/ns/jmap/blob');
+    $jmap->AddUsing('urn:ietf:params:jmap:blob');
 
     # Optionally persist tests in file.
     my $writeEmail2MimeTests = 0;

@@ -229,8 +229,13 @@ Valid arguments to include in the passed hashref are:
         my ($self, $arg) = @_;
         $arg //= {};
 
+        my $default_to = $self->user->username;
+        unless ($default_to =~ /@/) {
+          $default_to .= '@example.com';
+        }
+
         my $email = fake_rfc822({
-            to   => $self->user->username,
+            to   => $default_to,
             from => 'Xavier Ample <xa@example.com>',
             %$arg,
         });

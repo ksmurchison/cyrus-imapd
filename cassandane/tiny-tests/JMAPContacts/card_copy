@@ -69,12 +69,14 @@ sub test_card_copy
         '@type' => 'Card',
         version => '1.0',
         name => { full => "foo bar" },
-#        "avatar" => {
-#            "blobId" => $blobid,
-#            "size" => 10,
-#            "type" => "image/jpeg",
-#            "name" => JSON::null
-#         }
+        media => {
+            avatar => {
+                '@type' => 'MediaResource',
+                kind => 'photo',
+                mediaType => 'image/jpeg',
+                blobId => $blobid
+            }
+        }
     };
 
     xlog $self, "create card";
@@ -110,20 +112,20 @@ sub test_card_copy
         }, 'R2'],
     ]);
     $self->assert_str_equals('foo bar', $res->[0][1]{list}[0]{name}{full});
-#    my $blob = $jmap->Download({ accept => 'image/jpeg' },
-#                               'other', $res->[0][1]{list}[0]{avatar}{blobId});
-#    $self->assert_str_equals('image/jpeg',
-#                             $blob->{headers}->{'content-type'});
-#    $self->assert_num_not_equals(0, $blob->{headers}->{'content-length'});
-#    $self->assert_equals($data, $blob->{content});
+    my $blob = $jmap->Download({ accept => 'image/jpeg' },
+                               'other', $res->[0][1]{list}[0]{media}{avatar}{blobId});
+    $self->assert_str_equals('image/jpeg',
+                             $blob->{headers}->{'content-type'});
+    $self->assert_num_not_equals(0, $blob->{headers}->{'content-length'});
+    $self->assert_equals($data, $blob->{content});
 
     $self->assert_str_equals('foo bar', $res->[1][1]{list}[0]{name}{full});
-#    $blob = $jmap->Download({ accept => 'image/jpeg' },
-#                            'cassandane', $res->[1][1]{list}[0]{avatar}{blobId});
-#    $self->assert_str_equals('image/jpeg',
-#                             $blob->{headers}->{'content-type'});
-#    $self->assert_num_not_equals(0, $blob->{headers}->{'content-length'});
-#    $self->assert_equals($data, $blob->{content});
+    $blob = $jmap->Download({ accept => 'image/jpeg' },
+                            'cassandane', $res->[1][1]{list}[0]{media}{avatar}{blobId});
+    $self->assert_str_equals('image/jpeg',
+                             $blob->{headers}->{'content-type'});
+    $self->assert_num_not_equals(0, $blob->{headers}->{'content-length'});
+    $self->assert_equals($data, $blob->{content});
 
     xlog $self, "move card $cardId with changes";
     $res = $jmap->CallMethods([['ContactCard/copy', {
@@ -133,7 +135,7 @@ sub test_card_copy
             1 => {
                 id => $cardId,
                 addressBookIds => { $abookid => JSON::true },
-#                avatar => JSON::null,
+                'media/avatar' => JSON::null,
                 nicknames => { n1 => { '@type' => 'Nickname', name => "xxxxx" } }
             },
         }
@@ -157,8 +159,8 @@ sub test_card_copy
 
     $self->assert_str_equals('foo bar', $res->[0][1]{list}[0]{name}{full});
     $self->assert_str_equals('xxxxx', $res->[0][1]{list}[0]{nicknames}{n1}{name});
-#    $self->assert_null($res->[0][1]{list}[0]{avatar});
-return;
+    $self->assert_null($res->[0][1]{list}[0]{media});
+
     my $other3Jmap = $other3_user->jmap;
     $other3Jmap->DefaultUsing([
         'urn:ietf:params:jmap:core',
@@ -183,11 +185,13 @@ return;
             1 => {
                 id => $cardId,
                 addressBookIds => { Default => JSON::true },
-                avatar => {
-                    blobId => "$blobid",
-                    size => 16,
-                    type => "image/jpeg",
-                    name => JSON::null
+                media => {
+                    avatar => {
+                        '@type' => 'MediaResource',
+                        kind => 'photo',
+                        mediaType => 'image/jpeg',
+                        blobId => $blobid
+                    }
                 }
             },
         },
@@ -207,9 +211,9 @@ return;
             ids => [$cardId],
         }, 'R2'],
     ]);
-    $self->assert_str_equals('foo', $res->[0][1]{list}[0]{firstName});
-    my $blob = $jmap->Download({ accept => 'image/jpeg' },
-                               'other3', $res->[0][1]{list}[0]{avatar}{blobId});
+    $self->assert_str_equals('foo bar', $res->[0][1]{list}[0]{name}{full});
+    $blob = $jmap->Download({ accept => 'image/jpeg' },
+                            'other3', $res->[0][1]{list}[0]{media}{avatar}{blobId});
     $self->assert_str_equals('image/jpeg',
                              $blob->{headers}->{'content-type'});
     $self->assert_num_not_equals(0, $blob->{headers}->{'content-length'});

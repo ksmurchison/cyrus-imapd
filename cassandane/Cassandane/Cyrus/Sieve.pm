@@ -479,6 +479,6 @@ sub timsieved_write {
     xlog "timsieved: C: $str";
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/Sieve';
+use Cassandane::Tiny::Loader;
 
 1;

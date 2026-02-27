@@ -1,0 +1,100 @@
+#!perl
+use Cassandane::Tiny;
+
+use Data::GUID qw(guid_string);
+
+# All test cards have "FN:Test" set.
+my @test_cases = ({
+    desc => 'rfc6350_example', # from errata
+    N => 'N;SORT-AS="Harten,Rene":van der Harten;Rene;J.;Sir;R.D.O.N.',
+    wantName => {
+        full => 'Test',
+        components => [{
+            kind => 'surname',
+            value => 'van der Harten',
+        }, {
+            kind => 'given',
+            value => 'Rene',
+        }, {
+            kind => 'given2',
+            value => 'J.',
+        }, {
+            kind => 'title',
+            value => 'Sir',
+        }, {
+            kind => 'credential',
+            value => 'R.D.O.N.',
+        }],
+        sortAs => {
+            surname => 'Harten',
+            given => 'Rene',
+        },
+    },
+}, {
+    desc => 'empty_n',
+    N => "N;SORT-AS=Foo:;;;;",
+    wantName => { full => 'Test' },
+}, {
+    desc => 'missing_given',
+    N => 'N;SORT-AS="Foo,Bar":Foo;;;;',
+    wantName => {
+        full => 'Test',
+        components => [{
+            kind => 'surname',
+            value => 'Foo',
+        }],
+    },
+}, {
+    desc => 'more_sortas_comps_than_n',
+    N => 'N;SORT-AS="a,b,c,d,e,f,g":a;b;c;d;e',
+    wantName => {
+        full => 'Test',
+        components => [{
+            kind => 'surname',
+            value => 'a',
+        }, {
+            kind => 'given',
+            value => 'b',
+        }, {
+            kind => 'given2',
+            value => 'c',
+        }, {
+            kind => 'title',
+            value => 'd',
+        }, {
+            kind => 'credential',
+            value => 'e',
+        }],
+    },
+});
+
+for my $tc (@test_cases) {
+    Sub::Install::install_sub({
+        as => "test_card_get_sortas_$tc->{desc}",
+        code => sub :JMAPExtensions ($self, @) {
+            my $carddav = $self->default_user->carddav;
+            my $jmap = $self->default_user->jmap;
+            my $uid = guid_string();
+
+            xlog $self, "Create vCard";
+            my $card = <<~"EOF";
+                BEGIN:VCARD
+                VERSION:3.0
+                UID:$uid
+                FN:Test
+                $tc->{N}
+                END:VCARD
+                EOF
+            $card =~ s/\r?\n/\r\n/gs;
+            $carddav->Request('PUT', "Default/$uid.vcf", $card,
+                'Content-Type' => 'text/vcard');
+
+            xlog $self, "Assert JSContact name";
+            my $jcard = $jmap->request([[ 'ContactCard/get', {} ]])
+                             ->single_sentence('ContactCard/get')
+                             ->arguments
+                             ->{list}[0];
+            $self->assert_cmp_deeply($tc->{wantName}, $jcard->{name});
+        }
+    });
+}
