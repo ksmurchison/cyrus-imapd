@@ -1396,82 +1396,68 @@ imap_httpd_SOURCES += \
     imap/jmap_api.h \
     imap/jmap_backup.c \
     imap/jmap_blob.c \
-    imap/jmap_blob_props.c \
-    imap/jmap_blob_props.h \
-    imap/jmap_blob_upload_props.c \
-    imap/jmap_blob_upload_props.h \
     imap/jmap_calendar.c \
     imap/jmap_calendar.h \
-    imap/jmap_calendar_event_notification_props.c \
-    imap/jmap_calendar_event_notification_props.h \
-    imap/jmap_calendar_event_props.c \
-    imap/jmap_calendar_event_props.h \
-    imap/jmap_calendar_participant_identity_props.c \
-    imap/jmap_calendar_participant_identity_props.h \
-    imap/jmap_calendar_preferences_props.c \
-    imap/jmap_calendar_preferences_props.h \
-    imap/jmap_calendar_principal_props.c \
-    imap/jmap_calendar_principal_props.h \
-    imap/jmap_calendar_props.c \
-    imap/jmap_calendar_props.h \
-    imap/jmap_calendar_share_notification_props.c \
-    imap/jmap_calendar_share_notification_props.h \
     imap/jmap_contact.c \
-    imap/jmap_contact_addressbook_props.c \
-    imap/jmap_contact_addressbook_props.h \
-    imap/jmap_contact_card_props.c \
-    imap/jmap_contact_card_props.h \
-    imap/jmap_contact_group_props.c \
-    imap/jmap_contact_group_props.h \
-    imap/jmap_contact_props.c \
-    imap/jmap_contact_props.h \
     imap/jmap_core.c \
-    imap/jmap_core_usercounters_props.c \
-    imap/jmap_core_usercounters_props.h \
     imap/jmap_ical.c \
     imap/jmap_ical.h \
     imap/jmap_mailbox.c \
-    imap/jmap_mailbox_props.c \
-    imap/jmap_mailbox_props.h \
     imap/jmap_mail.c \
     imap/jmap_mail.h \
-    imap/jmap_mail_props.c \
-    imap/jmap_mail_props.h \
     imap/jmap_mail_query.c \
     imap/jmap_mail_query.h \
     imap/jmap_mail_query_parse.c \
     imap/jmap_mail_query_parse.h \
     imap/jmap_mail_submission.c \
-    imap/jmap_mail_submission_identity_props.c \
-    imap/jmap_mail_submission_identity_props.h \
-    imap/jmap_mail_submission_props.c \
-    imap/jmap_mail_submission_props.h \
-    imap/jmap_mail_thread_props.c \
-    imap/jmap_mail_thread_props.h \
     imap/jmap_mdn.c \
     imap/jmap_notes.c \
-    imap/jmap_notes_props.c \
-    imap/jmap_notes_props.h \
     imap/jmap_notif.c \
     imap/jmap_notif.h \
     imap/jmap_push.c \
     imap/jmap_push.h \
     imap/jmap_quota.c \
-    imap/jmap_quota_legacy_props.c \
-    imap/jmap_quota_legacy_props.h \
-    imap/jmap_quota_props.c \
-    imap/jmap_quota_props.h \
     imap/jmap_util.c \
     imap/jmap_util.h
+
+imap_httpd_LDADD += imap/libcyrus_jmap_props.la
+noinst_LTLIBRARIES += imap/libcyrus_jmap_props.la
+
+imap_libcyrus_jmap_props_la_LIBADD =
+imap_libcyrus_jmap_props_la_CFLAGS = $(AM_CFLAGS) $(CFLAG_VISIBILITY) $(NOWARN_UNUSED_PARAMETER)
+
+imap_libcyrus_jmap_props_la_SOURCES = \
+    imap/jmap_blob_props.c \
+    imap/jmap_blob_upload_props.c \
+    imap/jmap_calendar_event_notification_props.c \
+    imap/jmap_calendar_event_props.c \
+    imap/jmap_calendar_participant_identity_props.c \
+    imap/jmap_calendar_preferences_props.c \
+    imap/jmap_calendar_principal_props.c \
+    imap/jmap_calendar_props.c \
+    imap/jmap_calendar_share_notification_props.c \
+    imap/jmap_contact_addressbook_props.c \
+    imap/jmap_contact_card_props.c \
+    imap/jmap_contact_group_props.c \
+    imap/jmap_contact_props.c \
+    imap/jmap_core_usercounters_props.c \
+    imap/jmap_mail_props.c \
+    imap/jmap_mail_submission_identity_props.c \
+    imap/jmap_mail_submission_props.c \
+    imap/jmap_mail_thread_props.c \
+    imap/jmap_mailbox_props.c \
+    imap/jmap_notes_props.c \
+    imap/jmap_quota_legacy_props.c \
+    imap/jmap_quota_props.c
 
 if SIEVE
 imap_httpd_SOURCES += \
     imap/jmap_sieve.c \
+    imap/jmap_vacation.c
+
+imap_libcyrus_jmap_props_la_SOURCES += \
     imap/jmap_sieve_props.c \
-    imap/jmap_sieve_props.h \
-    imap/jmap_vacation.c \
-    imap/jmap_vacation_props.c \
-    imap/jmap_vacation_props.h
+    imap/jmap_vacation_props.c
 endif
 
 nodist_imap_httpd_SOURCES += \

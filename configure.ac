@@ -835,7 +835,7 @@ AC_COMPILE_IFELSE(
 CFLAGS="$saved_CFLAGS"
 AC_SUBST([NOWARN_SIGN_COMPARE])
 
-dnl look for an option to disable sign-comparison warnings (needed for
+dnl look for an option to disable unused-but-set-variable warnings (needed for
 dnl flex-generated sieve sources when building with -Werror)
 saved_CFLAGS="$CFLAGS"
 NOWARN_UNUSED_BUT_SET="-Wno-unused-but-set-variable"
@@ -849,6 +849,21 @@ AC_COMPILE_IFELSE(
 )
 CFLAGS="$saved_CFLAGS"
 AC_SUBST([NOWARN_UNUSED_BUT_SET])
+
+dnl look for an option to disable unused-parameter warnings
+dnl (needed for gperf-generated JMAP sources when building with -Werror)
+saved_CFLAGS="$CFLAGS"
+NOWARN_UNUSED_PARAMETER="-Wno-unused-parameter"
+CFLAGS="$NOWARN_UNUSED_PARAMETER"
+AC_MSG_CHECKING([whether the C compiler supports -Wno-unused-parameter])
+AC_COMPILE_IFELSE(
+    [AC_LANG_PROGRAM([], [])],
+    [AC_MSG_RESULT([yes])],
+    [NOWARN_UNUSED_PARAMETER=]
+    [AC_MSG_RESULT([no])]
+)
+CFLAGS="$saved_CFLAGS"
+AC_SUBST([NOWARN_UNUSED_PARAMETER])
 
 dnl for et routines
 AC_FUNC_CHECK(strerror,AC_DEFINE(HAS_STRERROR,[],[Do we have strerror()?]),
