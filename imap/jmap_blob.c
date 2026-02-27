@@ -59,8 +59,6 @@ static jmap_method_t jmap_blob_methods_standard[] = {
 };
 // clang-format on
 
-static jmap_property_set_t blob_props        = JMAP_PROPERTY_SET_INITIALIZER;
-static jmap_property_set_t blob_upload_props = JMAP_PROPERTY_SET_INITIALIZER;
 
 static json_t *blob_capabilities = NULL;
 
@@ -92,10 +90,6 @@ HIDDEN void jmap_blob_init(jmap_settings_t *settings)
                         JMAP_URN_BLOB, json_object());
 
     jmap_add_methods(jmap_blob_methods_standard, settings);
-
-    jmap_build_prop_set(&jmap_blob_props_map, &blob_props, settings);
-    jmap_build_prop_set(&jmap_blob_upload_props_map,
-                        &blob_upload_props, settings);
 }
 
 HIDDEN void jmap_blob_capabilities(json_t *account_capabilities)

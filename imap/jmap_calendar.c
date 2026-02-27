@@ -295,19 +295,6 @@ jmap_method_t jmap_calendar_methods_nonstandard[] = {
 };
 // clang-format on
 
-static jmap_property_set_t calendar_props = JMAP_PROPERTY_SET_INITIALIZER;
-static jmap_property_set_t event_props    = JMAP_PROPERTY_SET_INITIALIZER;
-static jmap_property_set_t calendarprincipal_props =
-    JMAP_PROPERTY_SET_INITIALIZER;
-static jmap_property_set_t sharenotification_props =
-    JMAP_PROPERTY_SET_INITIALIZER;
-static jmap_property_set_t calendareventnotification_props =
-    JMAP_PROPERTY_SET_INITIALIZER;
-static jmap_property_set_t participantidentity_props =
-    JMAP_PROPERTY_SET_INITIALIZER;
-static jmap_property_set_t calendarpreferences_props =
-    JMAP_PROPERTY_SET_INITIALIZER;
-
 HIDDEN void jmap_calendar_init(jmap_settings_t *settings)
 {
     jmap_add_methods(jmap_calendar_methods_standard, settings);
@@ -320,21 +307,6 @@ HIDDEN void jmap_calendar_init(jmap_settings_t *settings)
 
     json_object_set_new(settings->server_capabilities,
             JMAP_URN_CALENDAR_PREFERENCES, json_object());
-
-    jmap_build_prop_set(&jmap_calendar_props_map,
-                        &calendar_props, settings);
-    jmap_build_prop_set(&jmap_calendarevent_props_map,
-                        &event_props, settings);
-    jmap_build_prop_set(&jmap_calendarprincipal_props_map,
-                        &calendarprincipal_props, settings);
-    jmap_build_prop_set(&jmap_sharenotification_props_map,
-                        &sharenotification_props, settings);
-    jmap_build_prop_set(&jmap_calendareventnotification_props_map,
-                        &calendareventnotification_props, settings);
-    jmap_build_prop_set(&jmap_participantidentity_props_map,
-                        &participantidentity_props, settings);
-    jmap_build_prop_set(&jmap_calendarpreferences_props_map,
-                        &calendarpreferences_props, settings);
 
     if (config_getswitch(IMAPOPT_JMAP_NONSTANDARD_EXTENSIONS)) {
 
@@ -10573,7 +10545,7 @@ static int jmap_calendareventnotification_get(struct jmap_req *req)
     char *notfrom = jmap_caleventnotif_format_fromheader(req->userid);
     mbentry_t *notifmb = NULL;
 
-    jmap_get_parse(req, &parser, &calendareventnotification_props,
+    jmap_get_parse(req, &parser, &eventnotification_props,
                    1, NULL, NULL, &get, &err);
     if (err) {
         jmap_error(req, err);

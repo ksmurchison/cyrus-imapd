@@ -92,15 +92,9 @@ static jmap_method_t jmap_emailsubmission_methods_nonstandard[] = {
 };
 // clang-format on
 
-static jmap_property_set_t submission_props = JMAP_PROPERTY_SET_INITIALIZER;
-static jmap_property_set_t identity_props   = JMAP_PROPERTY_SET_INITIALIZER;
-
 HIDDEN void jmap_emailsubmission_init(jmap_settings_t *settings)
 {
     jmap_add_methods(jmap_emailsubmission_methods_standard, settings);
-
-    jmap_build_prop_set(&jmap_submission_props_map, &submission_props, settings);
-    jmap_build_prop_set(&jmap_identity_props_map, &identity_props, settings);
 
     json_object_set_new(settings->server_capabilities,
             JMAP_URN_SUBMISSION, json_object());

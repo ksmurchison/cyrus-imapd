@@ -1538,9 +1538,10 @@ static bool wildcard_match(const char *str, const char *pat)
 }
 
 HIDDEN const jmap_property_t *jmap_property_find(const char *name,
-                                                 jmap_property_set_t *prop_set)
+                                                 const jmap_property_set_t *prop_set)
 {
     const jmap_property_t *prop;
+    const char *wild;
     int i;
 
     if (!prop_set) return NULL;
@@ -1548,56 +1549,13 @@ HIDDEN const jmap_property_t *jmap_property_find(const char *name,
     prop = prop_set->map->lookup(name, strlen(name));
     if (prop) return prop;
 
-    ptrarray_foreach(&prop_set->wildcards, i, prop) {
-        if (wildcard_match(name, prop->name)) {
-            return prop;
+    strarray_foreach(&prop_set->wildcards, i, wild) {
+        if (wildcard_match(name, wild)) {
+            return prop_set->map->lookup(wild, strlen(wild));
         }
     }
 
     return NULL;
-}
-
-static void free_prop_set(enum jmap_handler_event eventmask,
-                          jmap_req_t *req __attribute__((unused)),
-                          void *rock)
-{
-    jmap_property_set_t *prop_set = rock;
-
-    if (eventmask & JMAP_HANDLE_SHUTDOWN) {
-        ptrarray_fini(&prop_set->wildcards);
-        ptrarray_fini(&prop_set->always_get);
-        ptrarray_fini(&prop_set->mandatory);
-    }
-}
-
-HIDDEN void jmap_build_prop_set(const jmap_prop_hash_table_t *map,
-                                jmap_property_set_t *prop_set,
-                                jmap_settings_t *settings)
-{
-    prop_set->map = map;
-
-    /* Populate specialized arrays of property names */
-    for (unsigned i = map->min_hash; i <= map->max_hash; i++) {
-        const jmap_property_t *prop = &map->array[i];
-
-        if (!prop->name) continue;
-
-        if (prop->name[strlen(prop->name)-1] == '*')
-            ptrarray_append(&prop_set->wildcards, (void *) prop);
-
-        if (prop->flags & JMAP_PROP_ALWAYS_GET)
-            ptrarray_append(&prop_set->always_get, (void *) prop);
-
-        if (prop->flags & JMAP_PROP_MANDATORY)
-            ptrarray_append(&prop_set->mandatory, (void *) prop);
-    }
-
-    /* Add an event handler to free property set elements */
-    struct jmap_handler *h = xzmalloc(sizeof(struct jmap_handler));
-    h->eventmask = JMAP_HANDLE_SHUTDOWN;
-    h->handler = &free_prop_set;
-    h->rock = prop_set;
-    ptrarray_append(&settings->event_handlers, h);
 }
 
 
@@ -1605,7 +1563,7 @@ HIDDEN void jmap_build_prop_set(const jmap_prop_hash_table_t *map,
 
 HIDDEN hash_table *jmap_get_validate_props(jmap_req_t *req,
                                            struct jmap_parser *parser,
-                                           jmap_property_set_t *valid_props,
+                                           const jmap_property_set_t *valid_props,
                                            const char *key,
                                            json_t *jprops)
 {
@@ -1638,7 +1596,7 @@ HIDDEN hash_table *jmap_get_validate_props(jmap_req_t *req,
                            
 HIDDEN void jmap_get_parse(jmap_req_t *req,
                            struct jmap_parser *parser,
-                           jmap_property_set_t *valid_props,
+                           const jmap_property_set_t *valid_props,
                            int allow_null_ids,
                            jmap_args_parse_cb args_parse,
                            void *args_rock,
@@ -1765,11 +1723,11 @@ HIDDEN void jmap_get_parse(jmap_req_t *req,
         }
     }
     else {
-        const jmap_property_t *prop;
+        const char *prop_name;
         int i;
 
-        ptrarray_foreach(&valid_props->always_get, i, prop) {
-            hash_insert(prop->name, (void*)1, get->props);
+        strarray_foreach(&valid_props->always_get, i, prop_name) {
+            hash_insert(prop_name, (void*)1, get->props);
         }
     }
 }
@@ -1797,7 +1755,7 @@ HIDDEN json_t *jmap_get_reply(struct jmap_get *get)
 /* Foo/set */
 
 static bool jmap_set_validate_props(jmap_req_t *req, const char *id, json_t *jobj,
-                                    jmap_property_set_t *valid_props,
+                                    const jmap_property_set_t *valid_props,
                                     json_t **err)
 {
     json_t *invalid = json_array();
@@ -1856,14 +1814,14 @@ static bool jmap_set_validate_props(jmap_req_t *req, const char *id, json_t *job
         if (tmp) free(tmp);
     }
     if (!id && valid_props &&
-        (mandatory_count != ptrarray_size(&valid_props->mandatory))) {
+        (mandatory_count != strarray_size(&valid_props->mandatory))) {
         /* create - report missing mandatory properties */
-        const jmap_property_t *prop;
+        const char *prop_name;
         int i;
 
-        ptrarray_foreach(&valid_props->mandatory, i, prop) {
-            if (!json_object_get(jobj, prop->name)) {
-                json_array_append_new(invalid, json_string(prop->name));
+        strarray_foreach(&valid_props->mandatory, i, prop_name) {
+            if (!json_object_get(jobj, prop_name)) {
+                json_array_append_new(invalid, json_string(prop_name));
             }
         }
     }
@@ -1880,7 +1838,7 @@ static bool jmap_set_validate_props(jmap_req_t *req, const char *id, json_t *job
 }
 
 HIDDEN void jmap_set_parse(jmap_req_t *req, struct jmap_parser *parser,
-                           jmap_property_set_t *valid_props,
+                           const jmap_property_set_t *valid_props,
                            jmap_args_parse_cb args_parse, void *args_rock,
                            struct jmap_set *set, json_t **err)
 {

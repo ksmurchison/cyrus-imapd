@@ -48,8 +48,6 @@ static jmap_method_t jmap_core_methods_nonstandard[] = {
 };
 // clang-format on
 
-static jmap_property_set_t usercounters_props = JMAP_PROPERTY_SET_INITIALIZER;
-
 HIDDEN void jmap_core_init(jmap_settings_t *settings)
 {
 #define _read_int_opt(val, optkey) do { \
@@ -142,9 +140,6 @@ HIDDEN void jmap_core_init(jmap_settings_t *settings)
                 JMAP_USERCOUNTERS_EXTENSION, json_object());
 
         jmap_add_methods(jmap_core_methods_nonstandard, settings);
-
-        jmap_build_prop_set(&jmap_usercounters_props_map,
-                            &usercounters_props, settings);
     }
 }
 

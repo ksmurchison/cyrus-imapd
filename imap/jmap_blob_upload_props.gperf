@@ -1,7 +1,9 @@
 %{
-/* jmap_blob_upload_props.h -- Lookup functions for JMAP Blob properties */
+/* jmap_blob_upload_props.c -- Lookup function for JMAP Blob properties */
 /* SPDX-License-Identifier: BSD-3-Clause-CMU */
 /* See COPYING file at the root of the distribution for more details. */
+
+#include "jmap_api.h"
 
 %}
 
@@ -29,7 +31,7 @@ jmap_property_t;
 "type", NULL, 0
 %%
 
-static const jmap_prop_hash_table_t jmap_blob_upload_props_map = {
+const jmap_prop_hash_table_t jmap_blob_upload_props_map = {
     blob_upload_prop_array,
     BLOB_UPLOAD_PROP_TOTAL_KEYWORDS,
     BLOB_UPLOAD_PROP_MIN_HASH_VALUE,

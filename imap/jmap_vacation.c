@@ -59,8 +59,6 @@ static jmap_method_t jmap_vacation_methods_nonstandard[] = {
 };
 // clang-format on
 
-static jmap_property_set_t vacation_props = JMAP_PROPERTY_SET_INITIALIZER;
-
 static int sieve_vacation_enabled = 0;
 
 HIDDEN void jmap_vacation_init(jmap_settings_t *settings)
@@ -93,8 +91,6 @@ HIDDEN void jmap_vacation_init(jmap_settings_t *settings)
     if (!sieve_vacation_enabled) return;
 
     jmap_add_methods(jmap_vacation_methods_standard, settings);
-
-    jmap_build_prop_set(&jmap_vacation_props_map, &vacation_props, settings);
 
     json_object_set_new(settings->server_capabilities,
             JMAP_URN_VACATION, json_object());

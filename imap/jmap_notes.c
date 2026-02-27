@@ -67,8 +67,6 @@ static jmap_method_t jmap_notes_methods_nonstandard[] = {
 };
 // clang-format on
 
-static jmap_property_set_t notes_props = JMAP_PROPERTY_SET_INITIALIZER;
-
 HIDDEN void jmap_notes_init(jmap_settings_t *settings)
 {
     if (!config_getstring(IMAPOPT_NOTESMAILBOX)) return;
@@ -80,8 +78,6 @@ HIDDEN void jmap_notes_init(jmap_settings_t *settings)
 
     if (config_getswitch(IMAPOPT_JMAP_NONSTANDARD_EXTENSIONS)) {
         jmap_add_methods(jmap_notes_methods_nonstandard, settings);
-
-        jmap_build_prop_set(&jmap_notes_props_map, &notes_props, settings);
     }
 }
 

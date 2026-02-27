@@ -1,7 +1,9 @@
 %{
-/* jmap_vacation_props.h -- Lookup functions for JMAP Vacation properties */
+/* jmap_vacation_props.c -- Lookup function for JMAP Vacation properties */
 /* SPDX-License-Identifier: BSD-3-Clause-CMU */
 /* See COPYING file at the root of the distribution for more details. */
+
+#include "jmap_api.h"
 
 %}
 
@@ -33,7 +35,7 @@ jmap_property_t;
 "htmlBody",  NULL, 0
 %%
 
-static const jmap_prop_hash_table_t jmap_vacation_props_map = {
+const jmap_prop_hash_table_t jmap_vacation_props_map = {
     vacation_prop_array,
     VACATION_PROP_TOTAL_KEYWORDS,
     VACATION_PROP_MIN_HASH_VALUE,

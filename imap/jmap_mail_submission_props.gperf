@@ -1,8 +1,10 @@
 %{
-/* jmap_mail_submission_props.h --
-   Lookup functions for JMAP Email Submission properties */
+/* jmap_mail_submission_props.c --
+   Lookup function for JMAP Email Submission properties */
 /* SPDX-License-Identifier: BSD-3-Clause-CMU */
 /* See COPYING file at the root of the distribution for more details. */
+
+#include "jmap_api.h"
 
 %}
 
@@ -41,7 +43,7 @@ jmap_property_t;
 "created", JMAP_MAIL_EXTENSION, JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE
 %%
 
-static const jmap_prop_hash_table_t jmap_submission_props_map = {
+const jmap_prop_hash_table_t jmap_submission_props_map = {
     submission_prop_array,
     SUBMISSION_PROP_TOTAL_KEYWORDS,
     SUBMISSION_PROP_MIN_HASH_VALUE,

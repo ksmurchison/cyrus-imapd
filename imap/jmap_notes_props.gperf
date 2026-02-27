@@ -1,7 +1,9 @@
 %{
-/* jmap_notes_props.h -- Lookup functions for JMAP Notes properties */
+/* jmap_notes_props.c -- Lookup function for JMAP Notes properties */
 /* SPDX-License-Identifier: BSD-3-Clause-CMU */
 /* See COPYING file at the root of the distribution for more details. */
+
+#include "jmap_api.h"
 
 %}
 
@@ -32,7 +34,7 @@ jmap_property_t;
 "isHTML",    NULL, 0
 %%
 
-static const jmap_prop_hash_table_t jmap_notes_props_map = {
+const jmap_prop_hash_table_t jmap_notes_props_map = {
     notes_prop_array,
     NOTES_PROP_TOTAL_KEYWORDS,
     NOTES_PROP_MIN_HASH_VALUE,

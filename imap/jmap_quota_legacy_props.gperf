@@ -1,7 +1,9 @@
 %{
-/* jmap_quota_legacy_props.h -- Lookup functions Legacy JMAP Quota properties */
+/* jmap_quota_legacy_props.c -- Lookup function Legacy JMAP Quota properties */
 /* SPDX-License-Identifier: BSD-3-Clause-CMU */
 /* See COPYING file at the root of the distribution for more details. */
+
+#include "jmap_api.h"
 
 %}
 
@@ -29,7 +31,7 @@ jmap_property_t;
 "total", NULL, JMAP_PROP_SERVER_SET | JMAP_PROP_IMMUTABLE
 %%
 
-static const jmap_prop_hash_table_t jmap_quota_legacy_props_map = {
+const jmap_prop_hash_table_t jmap_quota_legacy_props_map = {
     quota_legacy_prop_array,
     QUOTA_LEGACY_PROP_TOTAL_KEYWORDS,
     QUOTA_LEGACY_PROP_MIN_HASH_VALUE,

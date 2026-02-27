@@ -43,6 +43,7 @@
 #include "imap/jmap_contact_props.h"
 #include "imap/jmap_contact_addressbook_props.h"
 #include "imap/jmap_contact_card_props.h"
+//extern const jmap_property_set_t card_props;
 
 static int jmap_addressbook_get(struct jmap_req *req);
 static int jmap_addressbook_changes(struct jmap_req *req);
@@ -217,11 +218,6 @@ static jmap_method_t jmap_contact_methods_nonstandard[] = {
 };
 // clang-format on
 
-static jmap_property_set_t addressbook_props = JMAP_PROPERTY_SET_INITIALIZER;
-static jmap_property_set_t card_props        = JMAP_PROPERTY_SET_INITIALIZER;
-static jmap_property_set_t contact_props     = JMAP_PROPERTY_SET_INITIALIZER;
-static jmap_property_set_t group_props       = JMAP_PROPERTY_SET_INITIALIZER;
-
 static char *_prodid = NULL;
 
 HIDDEN void jmap_contact_init(jmap_settings_t *settings)
@@ -231,17 +227,11 @@ HIDDEN void jmap_contact_init(jmap_settings_t *settings)
     json_object_set_new(settings->server_capabilities,
             JMAP_URN_CONTACTS, json_object());
 
-    jmap_build_prop_set(&jmap_addressbook_props_map, &addressbook_props, settings);
-    jmap_build_prop_set(&jmap_card_props_map, &card_props, settings);
-
     if (config_getswitch(IMAPOPT_JMAP_NONSTANDARD_EXTENSIONS)) {
         json_object_set_new(settings->server_capabilities,
                 JMAP_CONTACTS_EXTENSION, json_object());
 
         jmap_add_methods(jmap_contact_methods_nonstandard, settings);
-
-        jmap_build_prop_set(&jmap_contact_props_map, &contact_props, settings);
-        jmap_build_prop_set(&jmap_group_props_map, &group_props, settings);
     }
 
     ptrarray_append(&settings->getblob_handlers, jmap_contact_getblob);
@@ -537,7 +527,7 @@ static int has_addressbooks(jmap_req_t *req)
 }
 
 static int _contacts_get(struct jmap_req *req, carddav_cb_t *cb, int kind,
-                         jmap_property_set_t *props)
+                         const jmap_property_set_t *props)
 {
     if (!has_addressbooks(req)) {
         jmap_error(req, json_pack("{s:s}", "type", "accountNoAddressbooks"));
@@ -971,7 +961,7 @@ static void reject_convprops(json_t *jpatch, json_t *invalid) {
 }
 
 static void _contacts_set(struct jmap_req *req, unsigned kind,
-                          jmap_property_set_t *props,
+                          const jmap_property_set_t *props,
                           int (*_set_create)(jmap_req_t *req,
                                              unsigned kind,
                                              json_t *jcard,
@@ -11870,17 +11860,17 @@ static int _jscard_to_vcard(struct jmap_req *req,
         else {
             /* Known property with wrong case is invalid */
             unsigned i;
-            for (i = jmap_card_props_map.min_hash;
-                 i <= jmap_card_props_map.max_hash;
+            for (i = card_props.map->min_hash;
+                 i <= card_props.map->max_hash;
                  i++) {
-                const jmap_property_t *prop = &jmap_card_props_map.array[i];
+                const jmap_property_t *prop = &card_props.map->array[i];
 
                 if (!strcasecmpsafe(mykey, prop->name)) {
                     jmap_parser_invalid(&parser, mykey);
                 }
             }
 
-            if (i > jmap_card_props_map.max_hash) {
+            if (i > card_props.map->max_hash) {
                 _jsunknown_to_vcard(&parser, mykey, jval, NULL, card);
             }
         }
