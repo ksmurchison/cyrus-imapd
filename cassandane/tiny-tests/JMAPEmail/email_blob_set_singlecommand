@@ -38,7 +38,7 @@ EOF
         'https://cyrusimap.org/ns/jmap/performance',
         'urn:ietf:params:jmap:core',
         'urn:ietf:params:jmap:mail',
-        'https://cyrusimap.org/ns/jmap/blob',
+        'urn:ietf:params:jmap:blob',
     ];
 
     xlog $self, "do the lot!";

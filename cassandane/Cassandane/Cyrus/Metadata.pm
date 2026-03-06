@@ -47,7 +47,7 @@ use Config;
 use base qw(Cassandane::Cyrus::TestCase);
 use Cassandane::Util::Log;
 
-use lib '../perl/imap';
+use lib '../perl/imap/lib';
 use Cyrus::DList;
 
 sub new
@@ -471,6 +471,6 @@ sub getmetadata
     return $res;
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/Metadata';
+use Cassandane::Tiny::Loader;
 
 1;

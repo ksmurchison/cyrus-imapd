@@ -92,7 +92,11 @@ EXPORTED const char *search_part_as_string(int part)
         "PRIORITY",
         "MESSAGEID",
         "REFERENCES",
-        "INREPLYTO"
+        "INREPLYTO",
+        "CALORGANIZER",
+        "CALATTENDEE",
+        "CALTITLE",
+        "CALDESCRIPTION",
     };
 
     return (part < 0 || part >= SEARCH_NUM_PARTS ? NULL : names[part]);
@@ -129,6 +133,10 @@ EXPORTED int search_part_is_header(enum search_part part)
     case SEARCH_PART_ATTACHMENTNAME:
     case SEARCH_PART_ATTACHMENTBODY:
     case SEARCH_PART_LANGUAGE:
+    case SEARCH_PART_CALORGANIZER:
+    case SEARCH_PART_CALATTENDEE:
+    case SEARCH_PART_CALSUMMARY:
+    case SEARCH_PART_CALDESCRIPTION:
     case SEARCH_NUM_PARTS:
         return 0;
     }

@@ -85,5 +85,4 @@ sub test_cardgroup_set_create
                           $card);
     $self->assert_matches(qr/X-ADDRESSBOOKSERVER-MEMBER:urn:uuid:\Q$member3/,
                           $card);
-    $self->assert_does_not_match(qr/N:;/, $card);
 }

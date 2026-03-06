@@ -19,6 +19,36 @@ package Cassandane::TestEntity::Factory::AddressBook {
         return;
     }
 
+=head2 default
+
+    my $abook = $user->addressbooks->default;
+
+This acts like C<< ->get >>, returning an address book instance, but finds and
+returns the address book that has a true C<isDefault>.
+
+=cut
+
+    sub default {
+        my ($self) = @_;
+        my $dt = $self->datatype;
+
+        my $jmap = $self->user->entity_jmap;
+
+        my $res = $jmap->request([[ "AddressBook/get", {} ]]);
+
+        my $get = $res->single_sentence('AddressBook/get');
+
+        my @objs = $get->arguments->{list}->@*;
+        @objs > 0 || Carp::confess("user has no default AddressBook");
+        @objs < 2 || Carp::confess("user has multiple default AddressBooks");
+
+        $self->instance_class->new({
+            id  => "$objs[0]{id}",
+            factory    => $self,
+            properties => $objs[0],
+        })
+    }
+
     use Cassandane::TestEntity::AutoSetup;
 
     no Moo;

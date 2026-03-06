@@ -108,11 +108,11 @@ sub test_search_omit_ical
     $self->assert_num_equals(0, scalar @$uids);
 
     $uids = $talk->search('fuzzy', 'subject', 'icalsummary') || die;
-    $self->assert_num_equals(2, scalar @$uids);
+    $self->assert_num_equals(0, scalar @$uids);
 
     $uids = $talk->search('fuzzy', 'text', 'icaldesc') || die;
-    $self->assert_num_equals(2, scalar @$uids);
+    $self->assert_num_equals(0, scalar @$uids);
 
     $uids = $talk->search('fuzzy', 'text', 'icallocation') || die;
-    $self->assert_num_equals(2, scalar @$uids);
+    $self->assert_num_equals(0, scalar @$uids);
 }

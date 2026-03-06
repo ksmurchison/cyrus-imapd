@@ -4584,7 +4584,7 @@ static int extract_icalbuf(struct buf *raw, charset_t charset, int encoding,
         if ((s = icalcomponent_get_description(comp))) {
             buf_setcstr(&buf, s);
             charset_t utf8 = charset_lookupname("utf-8");
-            str->receiver->begin_part(str->receiver, SEARCH_PART_BODY);
+            str->receiver->begin_part(str->receiver, SEARCH_PART_CALDESCRIPTION);
             charset_extract(extract_cb, str, &buf, utf8, 0, "calendar",
                             str->charset_flags);
             str->receiver->end_part(str->receiver);
@@ -4596,7 +4596,7 @@ static int extract_icalbuf(struct buf *raw, charset_t charset, int encoding,
         if ((prop = icalcomponent_get_first_property(comp, ICAL_SUMMARY_PROPERTY))) {
             if ((s = icalproperty_get_summary(prop))) {
                 buf_setcstr(&buf, s);
-                stuff_part(str->receiver, str->conv, SEARCH_PART_SUBJECT, &buf);
+                stuff_part(str->receiver, str->conv, SEARCH_PART_CALSUMMARY, &buf);
                 buf_reset(&buf);
             }
         }
@@ -4610,7 +4610,7 @@ static int extract_icalbuf(struct buf *raw, charset_t charset, int encoding,
                 } else {
                     buf_setcstr(&buf, s);
                 }
-                stuff_part(str->receiver, str->conv, SEARCH_PART_FROM, &buf);
+                stuff_part(str->receiver, str->conv, SEARCH_PART_CALORGANIZER, &buf);
                 buf_reset(&buf);
             }
         }
@@ -4632,7 +4632,7 @@ static int extract_icalbuf(struct buf *raw, charset_t charset, int encoding,
             }
         }
         if (buf.len) {
-            stuff_part(str->receiver, str->conv, SEARCH_PART_TO, &buf);
+            stuff_part(str->receiver, str->conv, SEARCH_PART_CALATTENDEE, &buf);
             buf_reset(&buf);
         }
 
@@ -4692,8 +4692,6 @@ static int extract_vcardbuf(struct buf *raw, charset_t charset, int encoding,
     for (prop = vcardcomponent_get_first_property(vcard, VCARD_ANY_PROPERTY);
          prop;
          prop = vcardcomponent_get_next_property(vcard, VCARD_ANY_PROPERTY)) {
-        vcardstructuredtype *stp = NULL;
-        vcardstructuredtype st = { 1, { 0 } };
         const char *val;
 
         switch (vcardproperty_isa(prop)) {
@@ -4724,23 +4722,26 @@ static int extract_vcardbuf(struct buf *raw, charset_t charset, int encoding,
             break;
 
         case VCARD_ORG_PROPERTY: {
-            unsigned f;
-            size_t v;
-
-            st.field[0] = vcardproperty_get_org(prop);
-            stp = &st;
-
-            GCC_FALLTHROUGH
+            vcardstrarray *sa = vcardproperty_get_org(prop);
+            for (size_t i = 0; i < vcardstrarray_size(sa); i++) {
+                val = vcardstrarray_element_at(sa, i);
+                if (val && val[0]) {
+                    if (buf_len(&buf)) buf_putc(&buf, ' ');
+                    buf_appendcstr(&buf, val);
+                }
+            }
+            break;
+        }
 
         case VCARD_N_PROPERTY:
-        case VCARD_ADR_PROPERTY:
-            if (!stp) stp = vcardproperty_get_adr(prop);
+        case VCARD_ADR_PROPERTY: {
+            vcardstructuredtype *stt =
+                vcardvalue_get_structured(vcardproperty_get_value(prop));
 
-            for (f = 0; f < stp->num_fields; f++) {
-                vcardstrarray *vals = stp->field[f];
-
-                for (v = 0; vals && v < vcardstrarray_size(vals); v++) {
-                    val = vcardstrarray_element_at(vals, v);
+            for (size_t i = 0; i < vcardstructured_num_fields(stt); i++) {
+                vcardstrarray *sa = vcardstructured_field_at(stt, i);
+                for (size_t j = 0; j < vcardstrarray_size(sa); j++) {
+                    val = vcardstrarray_element_at(sa, j);
                     if (val && val[0]) {
                         if (buf_len(&buf)) buf_putc(&buf, ' ');
                         buf_appendcstr(&buf, val);
@@ -5096,6 +5097,7 @@ EXPORTED int index_getsearchtext(message_t *msg, const strarray_t *partids,
     strarray_t types = STRARRAY_INITIALIZER;
     const char *type = NULL, *subtype = NULL;
     charset_t utf8 = charset_lookupname("utf-8");
+    const struct mailbox *mbox = NULL;
     int i;
     int r;
 
@@ -5108,6 +5110,9 @@ EXPORTED int index_getsearchtext(message_t *msg, const strarray_t *partids,
     /* Set up search receiver */
     r = receiver->begin_message(receiver, msg);
     if (r) return r;
+
+    /* Get mailbox. May fail. */
+    message_get_mailbox(msg, &mbox);
 
     memset(&str, 0, sizeof(struct getsearchtext_rock));
     str.receiver = receiver;
@@ -5136,47 +5141,55 @@ EXPORTED int index_getsearchtext(message_t *msg, const strarray_t *partids,
                 flags & INDEX_GETSEARCHTEXT_SNIPPET);
     }
 
+    // Determine if to index message headers.
+    bool index_hdrs = true;
+    if (mbox && (mailbox_mbtype(mbox) == MBTYPE_CALENDAR ||
+                 mailbox_mbtype(mbox) == MBTYPE_ADDRESSBOOK)) {
+        // Don't index headers, they contain internal metadata.
+        index_hdrs = false;
+    }
+
     /* Extract headers */
-    if (!message_get_field(msg, "From", format, &buf))
+    if (index_hdrs && !message_get_field(msg, "From", format, &buf))
         stuff_part(receiver, str.conv, SEARCH_PART_FROM, &buf);
 
-    if (!message_get_field(msg, "To", format, &buf))
+    if (index_hdrs && !message_get_field(msg, "To", format, &buf))
         stuff_part(receiver, str.conv, SEARCH_PART_TO, &buf);
 
-    if (!message_get_field(msg, "Cc", format, &buf))
+    if (index_hdrs && !message_get_field(msg, "Cc", format, &buf))
         stuff_part(receiver, str.conv, SEARCH_PART_CC, &buf);
 
-    if (!message_get_field(msg, "Bcc", format, &buf))
+    if (index_hdrs && !message_get_field(msg, "Bcc", format, &buf))
         stuff_part(receiver, str.conv, SEARCH_PART_BCC, &buf);
 
-    if (!message_get_field(msg, "Subject", format, &buf))
+    if (index_hdrs && !message_get_field(msg, "Subject", format, &buf))
         stuff_part(receiver, str.conv, SEARCH_PART_SUBJECT, &buf);
 
-    if (!message_get_field(msg, "List-Id", format, &buf))
+    if (index_hdrs && !message_get_field(msg, "List-Id", format, &buf))
         stuff_part(receiver, str.conv, SEARCH_PART_LISTID, &buf);
 
-    if (!message_get_field(msg, "Mailing-List", format, &buf))
+    if (index_hdrs && !message_get_field(msg, "Mailing-List", format, &buf))
         stuff_part(receiver, str.conv, SEARCH_PART_LISTID, &buf);
 
-    if (!message_get_field(msg, "Mailing-List", format, &buf))
+    if (index_hdrs && !message_get_field(msg, "Mailing-List", format, &buf))
         stuff_part(receiver, str.conv, SEARCH_PART_LISTID, &buf);
 
-    if (!message_get_deliveredto(msg, &buf))
+    if (index_hdrs && !message_get_deliveredto(msg, &buf))
         stuff_part(receiver, str.conv, SEARCH_PART_DELIVEREDTO, &buf);
 
-    if (!message_get_priority(msg, &buf))
+    if (index_hdrs && !message_get_priority(msg, &buf))
         stuff_part(receiver, str.conv, SEARCH_PART_PRIORITY, &buf);
 
-    if (!message_get_messageid(msg, &buf))
+    if (index_hdrs && !message_get_messageid(msg, &buf))
         extract_msgids(receiver, str.conv, SEARCH_PART_MESSAGEID, &buf);
 
-    if (!message_get_references(msg, &buf))
+    if (index_hdrs && !message_get_references(msg, &buf))
         extract_msgids(receiver, str.conv, SEARCH_PART_REFERENCES, &buf);
 
-    if (!message_get_inreplyto(msg, &buf))
+    if (index_hdrs && !message_get_inreplyto(msg, &buf))
         extract_msgids(receiver, str.conv, SEARCH_PART_INREPLYTO, &buf);
 
-    if (!message_get_leaf_types(msg, &types) && types.count) {
+    if (index_hdrs && !message_get_leaf_types(msg, &types) && types.count) {
         for (i = 0 ; i < types.count ; i+= 2) {
             if (!types.data[i]) continue;
             buf_setcstr(&buf, types.data[i]);

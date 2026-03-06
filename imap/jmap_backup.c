@@ -742,15 +742,8 @@ static int restore_contact(message_t *recreatemsg, message_t *destroymsg,
                 }
 
                 /* Add the recreated contact as a member of the group */
-                if (!strncmp(uid, "urn:uuid:", 9)) {
-                    buf_setcstr(&crock->buf, uid);
-                }
-                else {
-                    buf_reset(&crock->buf);
-                    buf_printf(&crock->buf, "urn:uuid:%s", uid);
-                }
                 vcardcomponent_add_property(crock->group_vcard,
-                                            vcardproperty_new_member(buf_cstring(&crock->buf)));
+                                            vcardproperty_new_member(uid));
             }
 
             vcardcomponent_free(vcard);

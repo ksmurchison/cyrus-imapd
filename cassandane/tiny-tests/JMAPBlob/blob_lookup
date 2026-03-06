@@ -42,7 +42,7 @@ sub test_blob_lookup
 
     xlog "Test without capability";
 
-    my @using = grep {; $_ ne 'https://cyrusimap.org/ns/jmap/blob' }
+    my @using = grep {; $_ ne 'urn:ietf:params:jmap:blob' }
                 $jmap->default_using->@*;
 
     $res = $jmap->CallMethods(

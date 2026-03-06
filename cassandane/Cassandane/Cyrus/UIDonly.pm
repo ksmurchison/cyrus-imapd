@@ -118,6 +118,6 @@ sub uidonly_cmd
     return %fetched;
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/UIDonly';
+use Cassandane::Tiny::Loader;
 
 1;

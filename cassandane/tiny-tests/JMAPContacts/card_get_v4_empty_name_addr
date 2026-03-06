@@ -1,0 +1,41 @@
+#!perl
+use Cassandane::Tiny;
+
+sub test_card_get_v4_empty_name_addr
+    ($self)
+{
+    my $user = $self->default_user;
+    my $jmap = $user->jmap; 
+    my $carddav = $user->carddav;
+
+    xlog $self, "create a contact with empty name";
+    my $id = 'ae2640cc-234a-4dd9-95cc-3106258445b9';
+    my $href = "Default/$id.vcf";
+    my $card = <<EOF;
+BEGIN:VCARD
+VERSION:4.0
+UID:$id
+ADR:;;;;;;;;;;;;;;;;;
+N:;;;;;;
+FN;DERIVED=TRUE:
+END:VCARD
+EOF
+
+    $card =~ s/\r?\n/\r\n/gs;
+
+    $carddav->Request('PUT', $href, $card, 'Content-Type' => 'text/vcard');
+
+    my $res = $jmap->request([[
+        'ContactCard/get' => {
+            properties => [ 'name', 'addresses' ]
+        },
+    ]])->single_sentence("ContactCard/get")->arguments;
+
+    $self->assert_cmp_deeply(
+        {
+            id => ignore(),
+            addressBookIds => ignore()
+        },
+        $res->{list}[0]
+    );
+}

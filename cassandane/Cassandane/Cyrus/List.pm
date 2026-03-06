@@ -153,6 +153,6 @@ sub bogus_test_rfc6154_ex01_list_non_extended
     });
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/List';
+use Cassandane::Tiny::Loader;
 
 1;

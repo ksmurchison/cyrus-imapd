@@ -325,6 +325,6 @@ sub _safeeq {
     return $json->encode([$a]) eq $json->encode([$b]);
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/Caldav';
+use Cassandane::Tiny::Loader;
 
 1;

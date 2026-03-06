@@ -19,7 +19,7 @@ sub test_blob_upload_basic_legacy
 
     $self->assert_str_equals($res->[0][0], 'error');
 
-    push @using, 'https://cyrusimap.org/ns/jmap/blob';
+    push @using, 'urn:ietf:params:jmap:blob';
 
     xlog "Regular Blob/upload works and returns a blobId";
     $res = $jmap->CallMethods(

@@ -15,6 +15,18 @@ sub test_email_set_header_control
     }, {
         name => 'header:x-header-tab',
         val => " a\tb",
+        valid => 1,
+    }, {
+        name => 'header:x-header-cr',
+        val => " a\rb",
+        valid => 0,
+    }, {
+        name => 'header:x-header-lf',
+        val => " a\nb",
+        valid => 0,
+    }, {
+        name => 'header:x-header-ff',
+        val => " a\x0cb",
         valid => 0,
     }, {
         name => 'header:x-header-fold',

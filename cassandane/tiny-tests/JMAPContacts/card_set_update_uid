@@ -1,0 +1,55 @@
+#!perl
+use Cassandane::Tiny;
+
+my @test_cases = ({
+    # Can update uid with same value.
+    name => 'same',
+    create => 'd88621dd-4921-47d0-b601-2cea44da37d6',
+    update => 'd88621dd-4921-47d0-b601-2cea44da37d6',
+    expect => 'accept',
+}, {
+    # Can't update uid with different value.
+    name => 'different',
+    create => '682efce6-e65a-44a7-b3c4-b410248d4b71',
+    update => '963c9141-70a8-453e-b50a-798a2d15871d',
+    expect => 'reject',
+}, {
+    # Can't update uid by adding urn:uuid prefix.
+    name => 'add_prefix',
+    create => '1fa58fd0-87b5-455f-93a4-90abe235bbd3',
+    update => 'urn:uuid:1fa58fd0-87b5-455f-93a4-90abe235bbd3',
+    expect => 'reject',
+}, {
+    # Can't update uid by stripping urn:uuid prefix.
+    name => 'strip_prefix',
+    create => 'urn:uuid:2eb65e14-0f3e-44ae-802e-025f94a94199',
+    update => '2eb65e14-0f3e-44ae-802e-025f94a94199',
+    expect => 'reject',
+});
+
+for my $tc (@test_cases) {
+    my $name = "test_card_set_update_uid_$tc->{name}";
+
+    Sub::Install::install_sub({
+        code => sub :JMAPExtensions ($self, @) {
+            # Create and update Card object.
+            my $user = $self->default_user;
+            my $c = $user->contacts->create({uid => $tc->{create}});
+            my $res = $user->jmap->request([[
+                'ContactCard/set' => { update => {
+                    $c->id => { uid => $tc->{update} }
+                }},
+            ]])->single_sentence("ContactCard/set")->arguments;
+            # Assert result.
+            if ($tc->{expect} eq 'reject') {
+                $self->assert_cmp_deeply({
+                    type => "invalidProperties",
+                    properties => ["uid"],
+                }, $res->{notUpdated}{$c->id});
+            } else {
+                $self->assert_not_null($res->{updated}{$c->id});
+            }
+        },
+        as => $name,
+    });
+}

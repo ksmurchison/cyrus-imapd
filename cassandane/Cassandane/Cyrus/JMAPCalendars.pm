@@ -625,6 +625,6 @@ EOF
     $self->{instance}->deliver(Cassandane::Message->new(raw => $imip));
 };
 
-use Cassandane::Tiny::Loader 'tiny-tests/JMAPCalendars';
+use Cassandane::Tiny::Loader;
 
 1;

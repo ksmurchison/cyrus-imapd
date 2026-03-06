@@ -1,0 +1,44 @@
+#!perl
+use Cassandane::Tiny;
+
+sub test_card_blobid
+    ($self)
+{
+    my $jmap = $self->{jmap};
+
+    xlog $self, "create contact";
+    my $res = $jmap->CallMethods([['ContactCard/set', {
+        create => {
+            "1" => {
+                '@type' => 'Card',
+                version => '1.0',
+                name => { full => "foo last1" }
+            },
+    }}, "R1"]]);
+    my $contactId = $res->[0][1]{created}{1}{id};
+    $self->assert_not_null($contactId);
+
+    xlog $self, "get contact blobId";
+    $res = $jmap->CallMethods([
+        ['ContactCard/get', {
+            ids => [$contactId],
+            properties => ['cyrusimap.org:blobId'],
+        }, 'R2']
+    ]);
+
+    # fetch a second time to make sure this works with a cached response
+    $res = $jmap->CallMethods([
+        ['ContactCard/get', {
+            ids => [$contactId],
+            properties => ['cyrusimap.org:blobId'],
+        }, 'R2']
+    ]);
+    my $blobId = $res->[0][1]{list}[0]{'cyrusimap.org:blobId'};
+    $self->assert_not_null($blobId);
+
+    xlog $self, "download blob";
+
+    $res = $jmap->Download('cassandane', $blobId);
+    $self->assert_str_equals("BEGIN:VCARD", substr($res->{content}, 0, 11));
+    $self->assert_num_not_equals(-1, index($res->{content}, 'FN:foo last1'));
+}

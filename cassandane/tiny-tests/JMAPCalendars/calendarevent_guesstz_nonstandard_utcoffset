@@ -73,7 +73,7 @@ EOF
             'urn:ietf:params:jmap:core',
             'urn:ietf:params:jmap:calendars',
             'https://cyrusimap.org/ns/jmap/calendars',
-            'https://cyrusimap.org/ns/jmap/blob',
+            'urn:ietf:params:jmap:blob',
         ]
     );
 

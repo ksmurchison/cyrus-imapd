@@ -581,9 +581,27 @@ EXPORTED int icalcomponent_myforeach(icalcomponent *ical,
     if (mastercomp) {
         dtstart = icalcomponent_get_mydtstart(mastercomp);
         event_length = icalcomponent_get_duration(mastercomp);
+
+        /*
+         * Per RFC 5545, Section 3.6.1:
+         *
+         * For cases where a "VEVENT" calendar component
+         * specifies a "DTSTART" property with a DATE value type
+         * but no "DTEND" nor "DURATION" property,
+         * the event's duration is taken to be one day.
+         *
+         * Since libical doesn't distiguish between a non-existent
+         * duration and a zero-length duration, we need to explicitly
+         * check for the presence of the properties here.
+         */
         if (icaldurationtype_is_null_duration(event_length) &&
-            icaltime_is_date(dtstart)) {
-            event_length = icaldurationtype_from_seconds(60 * 60 * 24);  /* P1D */
+            icaltime_is_date(dtstart) &&
+            (icalcomponent_isa(mastercomp) == ICAL_VEVENT_COMPONENT) &&
+            !icalcomponent_get_first_property(mastercomp,
+                                              ICAL_DTEND_PROPERTY) &&
+            !icalcomponent_get_first_property(mastercomp,
+                                              ICAL_DURATION_PROPERTY)) {
+            event_length = icaldurationtype_from_string("P1D");
         }
 
         /* add any RDATEs first, since EXDATE items can override them */

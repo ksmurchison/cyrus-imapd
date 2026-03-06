@@ -288,6 +288,6 @@ Cassandane::Cyrus::TestCase::magic(Bug3735 => sub {
     $testcase->config_set(virtdomains => 0);
 });
 
-use Cassandane::Tiny::Loader 'tiny-tests/Quota';
+use Cassandane::Tiny::Loader;
 
 1;

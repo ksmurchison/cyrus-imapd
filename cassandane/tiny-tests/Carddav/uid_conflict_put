@@ -1,0 +1,139 @@
+#!perl
+use Cassandane::Tiny;
+
+use Sub::Install;
+use Data::GUID qw(guid_string);
+
+# Declare acceptable tests. These and only these do not result in PUT
+# rejecting the request with no-uid-conflict.
+#
+# Each test is encoded as follows:
+# "vXtY": X is the version of the initial vCard, Y of the updated one.
+#         X/Y may be 3 or 4.
+# "pXtY": X indicates if the initial vCard UID had the "urn:uuid" prefix,
+#         Y for the updated card. X/Y may be 'y' or 'n'.
+# "rX":   X indicates if the card is PUT to the same resource ('a') or a
+#         different one ('b').
+# "xX":   X indicates if a resource having the same UID as the updated card
+#         already exists ('y') or does not exist ('n')
+#
+my @accept_tests = (
+    # PUTs to same resource, target UID does not exist
+    "v3t4_pnty_ra_xn",
+    "v3t4_pytn_ra_xn",
+    "v3t4_pyty_ra_xn",
+    "v3t4_pntn_ra_xn",
+    "v4t3_pyty_ra_xn",
+    "v4t3_pntn_ra_xn",
+    "v3t3_pyty_ra_xn",
+    "v3t3_pntn_ra_xn",
+    "v4t4_pyty_ra_xn",
+    "v4t4_pntn_ra_xn",
+    # PUTs to different resource, target UID does not exist
+    "v3t3_pnty_rb_xn",
+    "v3t3_pytn_rb_xn",
+    "v3t4_pnty_rb_xn",
+    "v3t4_pytn_rb_xn",
+    "v4t3_pnty_rb_xn",
+    "v4t3_pytn_rb_xn",
+    "v4t4_pnty_rb_xn",
+    "v4t4_pytn_rb_xn",
+);
+
+# Generate tests.
+for my $from_version (3, 4) {
+    for my $to_version (3, 4) {
+        for my $from_prefix ('y', 'n') {
+            for my $to_prefix ('y', 'n') {
+                for my $to_resource ('a', 'b') {
+                    for my $to_uid_exists ('n', 'y') {
+
+                        if ($from_prefix eq $to_prefix && $to_uid_exists eq "y") {
+                          # Skip this test, it's not possible
+                          # to set up it up without already
+                          # running into a no-uid conflict.
+                          next;
+                        }
+
+                        my $name = ""
+                            . "v" . $from_version . "t" . $to_version
+                            . "_p" . $from_prefix . "t" . $to_prefix
+                            . "_r" . $to_resource
+                            . "_x" . $to_uid_exists;
+                        my $want = (grep { $_ eq $name } @accept_tests) ? "accept" : "reject";
+                        Sub::Install::install_sub({
+                             code => sub ($self, @)
+                             {
+                                 $self->_do_test($from_version, $to_version,
+                                     $from_prefix, $to_prefix,
+                                     $to_resource, $to_uid_exists, $want);
+
+                             },
+                             as => "test_uid_conflict_put" . "_$name" . "_$want",
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
+
+sub _do_test ($self, $from_version, $to_version, $from_prefix, $to_prefix, $to_resource, $to_uid_exists, $want)
+{
+    my $user = $self->default_user;
+    my $carddav = $user->carddav;
+
+    my $bare_uid = guid_string();
+    my $from_uid = ($from_prefix eq 'y' ? "urn:uuid:" : "") . $bare_uid;
+    my $to_uid = ($to_prefix eq 'y' ? "urn:uuid:" : "") . $bare_uid;
+
+    xlog $self, "PUT initial vCard";
+    my $vcard = <<~EOF;
+    BEGIN:VCARD
+    PRODID:-//foo//bar//EN
+    VERSION:$from_version.0
+    UID:$from_uid
+    N:;;;;
+    FN:
+    NOTE:Original UID was $from_uid with version $from_version
+    END:VCARD
+    EOF
+    $vcard =~ s/\r?\n/\r\n/gs;
+    $carddav->Request('PUT', "Default/a.vcf", $vcard, 'Content-Type' => 'text/vcard');
+
+    if ($to_uid_exists eq "y") {
+        xlog $self, "PUT vCard with target UID to different resource";
+        my $vcardx = <<~EOF;
+        BEGIN:VCARD
+        PRODID:-//foo//bar//EN
+        VERSION:3.0
+        UID:$to_uid
+        N:;;;;
+        FN:
+        END:VCARD
+        EOF
+        $vcardx =~ s/\r?\n/\r\n/gs;
+        $carddav->Request('PUT', "Default/x.vcf", $vcardx, 'Content-Type' => 'text/vcard');
+    }
+
+    xlog $self, "PUT updated vCard";
+    $vcard =~ s/^UID:$from_uid\r\n/UID:$to_uid\r\n/m;
+    $vcard =~ s/^VERSION:$from_version.0\r\n/VERSION:$to_version.0\r\n/m;
+    my $url = $carddav->request_url("Default/$to_resource.vcf");
+    my $res = $carddav->ua->request('PUT', $url,
+        {
+            content => $vcard,
+            headers => {
+                'Content-Type' => "text/vcard; version=$to_version.0",
+                Authorization => $carddav->auth_header(),
+            }
+        }
+    );
+    my $want_status;
+    if ($want eq 'accept') {
+        $want_status = $to_resource eq 'a' ? '204' : '201';
+    } else {
+        $want_status = '403';
+    }
+    $self->assert_equals($want_status, $res->{status});
+}

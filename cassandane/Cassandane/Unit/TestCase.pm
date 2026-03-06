@@ -548,7 +548,7 @@ sub assert_cmp_deeply
     my ($package, $filename, $line) = caller;
 
     my $diag = join qq{\n},
-               "deep comparison failed at $filename, line $line:\n",
+               "deep comparison failed at $filename, line $line, $desc:\n",
                Test::Deep::deep_diag($stack);
 
     return $self->assert(0, $diag);

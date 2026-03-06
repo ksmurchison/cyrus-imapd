@@ -71,8 +71,8 @@ EOF
             },
         }, 'R4'],
     ], $using);
-    $self->assert_num_equals(1, scalar @{$res->[0][1]{ids}});
-    $self->assert_num_equals(1, scalar @{$res->[1][1]{ids}});
+    $self->assert_num_equals(0, scalar @{$res->[0][1]{ids}});
+    $self->assert_num_equals(0, scalar @{$res->[1][1]{ids}});
     $self->assert_num_equals(1, scalar @{$res->[2][1]{ids}});
     $self->assert_num_equals(1, scalar @{$res->[3][1]{ids}});
 }

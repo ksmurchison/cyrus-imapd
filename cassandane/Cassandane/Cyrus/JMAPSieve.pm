@@ -109,7 +109,7 @@ sub set_up
         'urn:ietf:params:jmap:mail',
         'urn:ietf:params:jmap:sieve',
         'https://cyrusimap.org/ns/jmap/sieve',  # for SieveScript/test
-        'https://cyrusimap.org/ns/jmap/blob',
+        'urn:ietf:params:jmap:blob',
     ]);
 }
 
@@ -125,6 +125,6 @@ sub download
     $self->{jmap}->Download($accountid, $blobid);
 }
 
-use Cassandane::Tiny::Loader 'tiny-tests/JMAPSieve';
+use Cassandane::Tiny::Loader;
 
 1;
