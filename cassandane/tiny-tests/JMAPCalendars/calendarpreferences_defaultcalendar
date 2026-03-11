@@ -29,7 +29,10 @@ EOF
     my $res = $jmap->CallMethods([
         ['Calendar/get', { }, 'R1'],
     ]);
-    $self->assert_str_equals('Default', $res->[0][1]{list}[0]{id});
+    my $defaultId = $res->[0][1]{list}[0]{id};
+    my $defaultHref = $res->[0][1]{list}[0]{'x-href'};
+    $self->assert_str_equals('/dav/calendars/user/cassandane/Default',
+                             $defaultHref);
 
     xlog "No defaultCalendar set";
     $res = $jmap->CallMethods([
@@ -62,7 +65,7 @@ EOF
         }, 'R2'],
     ]);
     $self->assert_deep_equals({
-        Default => JSON::true
+        $defaultId => JSON::true
     }, $res->[1][1]{list}[0]{calendarIds});
     $state = $res->[1][1]{state};
 
@@ -88,9 +91,12 @@ EOF
     $self->assert_not_null($calendarB);
     my $calendarC = $res->[0][1]{created}{calendarC}{id};
     $self->assert_not_null($calendarC);
+    my $calendarCHref = $res->[0][1]{created}{calendarC}{'x-href'};
+    $self->assert_not_null($calendarCHref);
 
     xlog "Make calendar C read-only to owner";
-    $admin->setacl("user.cassandane.#calendars.$calendarC", cassandane => 'lrs') or die;
+    $admin->setacl("user.cassandane.#calendars." . basename($calendarCHref),
+                   cassandane => 'lrs') or die;
 
     xlog "Set calendarA as default";
     $res = $jmap->CallMethods([
@@ -136,7 +142,7 @@ EOF
         }, 'R2'],
     ]);
     $self->assert_deep_equals([$calendarA], $res->[0][1]{destroyed});
-    $self->assert_str_equals('Default', $res->[1][1]{list}[0]{defaultCalendarId});
+    $self->assert_str_equals($defaultId, $res->[1][1]{list}[0]{defaultCalendarId});
 
     xlog "Can set defaultCalendarId to null, but new one gets picked immediately";
     $res = $jmap->CallMethods([
@@ -156,13 +162,13 @@ EOF
     xlog "Destroy special calendar Default, new default is calendar B";
     $res = $jmap->CallMethods([
         ['Calendar/set', {
-            destroy => [ 'Default' ],
+            destroy => [ $defaultId ],
             onDestroyRemoveEvents => JSON::true,
         }, 'R1'],
         ['CalendarPreferences/get', {
         }, 'R2'],
     ]);
-    $self->assert_deep_equals(['Default'], $res->[0][1]{destroyed});
+    $self->assert_deep_equals([$defaultId], $res->[0][1]{destroyed});
     $self->assert_str_equals($calendarB, $res->[1][1]{list}[0]{defaultCalendarId});
 
     xlog "Get CalendarEvent state";

@@ -8,10 +8,26 @@ sub test_calendar_set_destroyspecials
     my $jmap = $self->default_user->jmap;
     my $default_cal_id = $self->default_user->calendars->default->id;
 
-    my @specialIds = ["Inbox", "Outbox", "Default", "Attachments"];
+    xlog $self, "Get calendar Ids of specials";
+    my $admintalk = $self->{adminstore}->get_client();
+    $admintalk->list('', 'user.cassandane.#calendars.*',
+                     'RETURN', [ 'STATUS', [ 'MAILBOXID' ] ]);
+    my $res = $admintalk->get_response_code('status') || {};
+
+    # Replace mailbox prefix with calendar prefix
+    my $inId  = 'C' .
+        substr($res->{'user.cassandane.#calendars.Inbox'}{mailboxid}[0], 1);
+    my $outId = 'C' .
+        substr($res->{'user.cassandane.#calendars.Outbox'}{mailboxid}[0], 1);
+    my $defId = 'C' .
+        substr($res->{'user.cassandane.#calendars.Default'}{mailboxid}[0], 1);
+    my $attId = 'C' .
+        substr($res->{'user.cassandane.#calendars.Attachments'}{mailboxid}[0], 1);
+
+    my @specialIds = [ $inId, $outId, $defId, $attId];
 
     xlog $self, "destroy special calendars";
-    my $res = $jmap->CallMethods([
+    $res = $jmap->CallMethods([
             ['Calendar/set', { destroy => @specialIds }, "R1"]
     ]);
     $self->assert_not_null($res);
@@ -21,18 +37,18 @@ sub test_calendar_set_destroyspecials
     my ($maj, $min) = Cassandane::Instance->get_version();
     if ($maj > 3 || ($maj == 3 && $min >= 5)) {
         # Default calendar may be destroyed from 3.5+
-        $self->assert_deep_equals(['Default'], $res->[0][1]{destroyed});
+        $self->assert_deep_equals([$defId], $res->[0][1]{destroyed});
     }
     else {
         # but previously, this was forbidden
-        $errType = $res->[0][1]{notDestroyed}{"Default"}{type};
+        $errType = $res->[0][1]{notDestroyed}{$defId}{type};
         $self->assert_str_equals("isDefault", $errType);
     }
 
-    $errType = $res->[0][1]{notDestroyed}{"Inbox"}{type};
+    $errType = $res->[0][1]{notDestroyed}{$inId}{type};
     $self->assert_str_equals("notFound", $errType);
-    $errType = $res->[0][1]{notDestroyed}{"Outbox"}{type};
+    $errType = $res->[0][1]{notDestroyed}{$outId}{type};
     $self->assert_str_equals("notFound", $errType);
-    $errType = $res->[0][1]{notDestroyed}{"Attachments"}{type};
+    $errType = $res->[0][1]{notDestroyed}{$attId}{type};
     $self->assert_str_equals("notFound", $errType);
 }

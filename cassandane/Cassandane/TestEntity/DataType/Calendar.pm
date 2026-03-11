@@ -31,8 +31,28 @@ true C<isDefault> property.
 
     sub default {
         my ($self) = @_;
+        my $dt = $self->datatype;
 
-        return $self->get('Default');
+        my $jmap = $self->user->entity_jmap;
+
+        my $res = $jmap->request([[ "Calendar/get", {} ]]);
+
+        my $get = $res->single_sentence('Calendar/get');
+
+        my @objs = $get->arguments->{list}->@*;
+        @objs > 0 || Carp::confess("user has no Calendars");
+
+        my ($default) = grep {; $_->{isDefault} } @objs;
+        @objs > 0 || Carp::confess("user has no default Calendar");
+
+        my ($default) = grep {; $_->{isDefault} } @objs;
+        @objs < 2 || Carp::confess("user has multiple default Calendars");
+
+        $self->instance_class->new({
+            id  => "$objs[0]{id}",
+            factory    => $self,
+            properties => $objs[0],
+        })
     }
 
     use Cassandane::TestEntity::AutoSetup;

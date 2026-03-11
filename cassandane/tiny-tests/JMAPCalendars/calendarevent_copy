@@ -32,6 +32,11 @@ sub test_calendarevent_copy
     my $srcCalendarId = $caldav->NewCalendar({name => 'Source Calendar'});
     $self->assert_not_null($srcCalendarId);
 
+    my $stat = $admintalk->status("user.cassandane.#calendars.$srcCalendarId",
+                                  '(mailboxid)');
+    # Replace mailbox prefix with calendar prefix
+    my $srcCalendarJmapId = 'C' . substr($stat->{mailboxid}[0], 1);
+
     xlog $self, "create destination calendar";
     my $dstCalendarId = $othercaldav->NewCalendar({name => 'Destination Calendar'});
     $self->assert_not_null($dstCalendarId);
@@ -41,7 +46,7 @@ sub test_calendarevent_copy
 
     my $event =  {
         calendarIds => {
-            $srcCalendarId => JSON::true,
+            $srcCalendarJmapId => JSON::true,
         },
         "uid" => "58ADE31-custom-UID",
         "title"=> "foo",
