@@ -528,14 +528,21 @@ A spare CID pool for connection migration
 
 QUIC's connection migration (:rfc:`9000#section-9`) lets a client keep
 a connection alive across a change of IP address or port, but requires
-switching to a fresh, previously-unused CID when it does. This page
-covers the dispatch layer's half of that, for both backends:
+switching to a fresh, previously-unused CID when it does. Cyrus
+advertises support for it: the ``disable_active_migration`` transport
+parameter isn't set, precisely because both dispatch backends and
+``imap/http_h3.c`` are built to honor migration, as this page describes.
 :program:`master` generates a small pool of CIDs per connection
 (``QUIC_CID_POOL_SIZE``, see ``master/quic/quic_handoff.h``) and
 registers every one before the connection is even handed off, all
 pointing at the same connection. The whole pool travels in the handoff
-too, so a consumer can hand out a fresh one each time it needs one,
-with no further signal back to :program:`master` required.
+too, so the worker (``imap/http_h3.c``'s
+``h3_get_new_connection_id_cb()``) can hand one out each time ngtcp2
+asks for a fresh CID, with no further signal back to :program:`master`
+required; once the pool is exhausted it fails the connection outright
+rather than hand out a CID neither dispatch backend would recognize --
+sized well above what a connection would plausibly churn through in
+practice, so this should be rare.
 
 The client's own originally-chosen CID is registered too, alongside
 the pool, since a client keeps addressing its first flight (retransmits,
@@ -566,12 +573,21 @@ explicitly. ``quic_relay_forward()`` tracks each connection's current
 peer address, updating it whenever a registered CID's traffic arrives
 from somewhere new -- covering plain NAT rebinding as well as
 migration -- and prefixes every relayed datagram with a ``struct
-quic_relay_pkt_hdr`` carrying that address, so a consumer reading from
-the relay socketpair can recover each datagram's real arrival address
-the same way the eBPF backend's worker would get it from
-``recvfrom()``. That address is also what the worker sends its replies
-to, so a migration it learns about this way takes effect in both
-directions at once.
+quic_relay_pkt_hdr`` carrying that address, so ``imap/http_h3.c``'s
+``http3_input()`` can recover each datagram's real arrival address
+reading from the relay socketpair, the same way the eBPF backend's
+worker gets it from ``recvfrom()`` directly (it tells the two apart by
+address family: ``AF_UNIX`` means the relay backend, anything else
+means eBPF). The worker sends its replies to that same address, so a
+migration takes effect in both directions at once.
+
+Either way, ``http3_input()`` only feeds this address to
+``ngtcp2_conn_read_pkt()`` as where a packet *arrived from* -- it is
+never written to the connection's own tracked peer address directly,
+so a forged packet claiming a new source can't redirect
+``h3_flush_output()``'s replies; that address only advances once
+ngtcp2's ``path_validation`` callback reports the new path validated
+per :rfc:`9000#section-9.3`'s PATH_CHALLENGE/PATH_RESPONSE.
 
 Choosing a worker
 =================
@@ -695,5 +711,11 @@ Related configuration
 *   :imapdconf:`quic_retry` -- when to validate a new connection's
     address with a Retry: ``never``, under ``load`` (the default), or
     ``always``.
+*   :imapdconf:`httptimeout` and :imapdconf:`websocket_timeout` time
+    out an idle HTTP/3 connection, as they do HTTP/1.1 and HTTP/2.
+    QUIC's own idle timeout is set just past the longer of the two, so
+    the connection gets a CONNECTION_CLOSE rather than going quiet, or
+    to 5 minutes if both are 0, since QUIC has no keepalive to notice a
+    client that vanished.
 
 Back to :ref:`imap-features`
